@@ -59,6 +59,6 @@ class LibraryGroupingTest {
     @Test
     fun searchesAlbumsAndArtists() {
         assertEquals(listOf("Mixed"), LibraryGrouping.searchAlbums(LibraryGrouping.albums(tracks), "mix").map { it.title })
-        assertEquals(listOf("Band B"), LibraryGrouping.searchArtists(LibraryGrouping.artists(tracks), "band b").map { it.name })
+        assertEquals(listOf("Band C"), LibraryGrouping.searchArtists(LibraryGrouping.artists(tracks), "band c").map { it.name })
     }
 }
