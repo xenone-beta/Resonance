@@ -33,9 +33,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,34 +41,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
-import dev.resonance.player.core.TimeFormat
 import dev.resonance.player.data.ACCENT_SEEDS
 import dev.resonance.player.data.ColorSource
 import dev.resonance.player.data.ThemeMode
-import dev.resonance.player.ui.common.SleepTimerDialog
-import dev.resonance.player.ui.common.rememberSleepRemaining
-
-private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
-
-private fun speedLabel(value: Float): String =
-    if (value % 1f == 0f) "${value.toInt()}×" else "$value×"
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
+fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Unit) {
     val settings = vm.settings
     val themeMode by settings.themeMode.collectAsState()
     val colorSource by settings.colorSource.collectAsState()
     val accent by settings.accent.collectAsState()
     val albumColors by settings.albumColors.collectAsState()
-    val visualizer by settings.visualizer.collectAsState()
-    val speed by settings.speed.collectAsState()
-    val skipSilence by settings.skipSilence.collectAsState()
-    var sleepDialog by remember { mutableStateOf(false) }
-    val remaining = rememberSleepRemaining(vm.sleepTimer)
-    val sleepState by vm.sleepTimer.state.collectAsState()
-
-    if (sleepDialog) SleepTimerDialog(vm.sleepTimer) { sleepDialog = false }
+    val vinyl by settings.vinylMode.collectAsState()
 
     val wallpaperAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -164,48 +146,27 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit) {
                 onChange = settings::setAlbumColors,
             )
 
-            SectionHeader(stringResource(R.string.settings_playback))
             SwitchRow(
-                title = stringResource(R.string.settings_visualizer),
-                subtitle = stringResource(R.string.settings_visualizer_hint),
-                checked = visualizer,
-                onChange = settings::setVisualizer,
+                title = stringResource(R.string.settings_vinyl),
+                subtitle = stringResource(R.string.settings_vinyl_hint),
+                checked = vinyl,
+                onChange = settings::setVinylMode,
             )
 
-            Label(stringResource(R.string.settings_speed))
-            FlowRow(
-                Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SPEEDS.forEach { value ->
-                    FilterChip(
-                        selected = speed == value,
-                        onClick = { settings.setSpeed(value) },
-                        label = { Text(speedLabel(value)) },
-                    )
-                }
-            }
-
-            SwitchRow(
-                title = stringResource(R.string.settings_skip_silence),
-                subtitle = stringResource(R.string.settings_skip_silence_hint),
-                checked = skipSilence,
-                onChange = settings::setSkipSilence,
+            SectionHeader(stringResource(R.string.settings_music_hint_title))
+            Text(
+                stringResource(R.string.settings_music_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
 
+            SectionHeader(stringResource(R.string.settings_about_section))
             ListItem(
-                modifier = Modifier.clickable { sleepDialog = true },
+                modifier = Modifier.clickable(onClick = onOpenAbout),
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                headlineContent = { Text(stringResource(R.string.sleep_title)) },
-                supportingContent = {
-                    Text(
-                        when {
-                            remaining != null -> stringResource(R.string.sleep_left, TimeFormat.clock(remaining))
-                            sleepState.endOfTrack -> stringResource(R.string.sleep_after_track_active)
-                            else -> stringResource(R.string.sleep_off)
-                        },
-                    )
-                },
+                headlineContent = { Text(stringResource(R.string.settings_about_row)) },
+                supportingContent = { Text(stringResource(R.string.settings_about_row_desc)) },
             )
         }
     }

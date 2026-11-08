@@ -100,6 +100,80 @@
     <string name="widget_description">Обложка, название и управление</string>
     <string name="widget_nothing">Ничего не играет</string>
     <string name="widget_open">Нажмите, чтобы открыть Resonance</string>
+    <string name="speed_hint">Меняет темп без изменения высоты звука</string>
+    <string name="speed_short">Скорость</string>
+    <string name="sleep_short">Сон</string>
+    <string name="more_short">Ещё</string>
+    <string name="lyrics_title">Текст</string>
+    <string name="player_settings_title">Настройки воспроизведения</string>
+    <string name="settings_headphones">Играть при подключении наушников</string>
+    <string name="settings_headphones_hint">Продолжать очередь, когда подключаются наушники или Bluetooth</string>
+    <string name="settings_lyrics_folder">Папка с текстами</string>
+    <string name="lyrics_folder_none">Не выбрана</string>
+    <string name="lyrics_folder_set">Папка с .lrc выбрана; нажмите, чтобы сменить</string>
+    <string name="lyrics_no_folder">Выберите папку с .lrc файлами, чтобы видеть тексты здесь. Файл должен называться так же, как файл песни.</string>
+    <string name="lyrics_choose_folder">Выбрать папку</string>
+    <string name="lyrics_not_found">Для этой песни текст не найден. Положите .lrc файл с таким же именем, как у песни, в папку с текстами.</string>
+    <string name="lyrics_change_folder">Сменить папку</string>
+    <string name="drag_to_reorder">Удерживайте и перетащите</string>
+    <string name="smart_recent">Недавно добавленные</string>
+    <string name="smart_recent_hint">100 самых новых песен</string>
+    <string name="smart_most_played">Чаще всего играет</string>
+    <string name="smart_most_played_hint">Ваши любимые по числу прослушиваний</string>
+    <string name="smart_never_played">Ни разу не слушали</string>
+    <string name="smart_never_played_hint">Песни, которые вы ещё не слушали</string>
+    <string name="settings_vinyl">Режим виниловой пластинки</string>
+    <string name="settings_vinyl_hint">Обложка превращается в пластинку, которая крутится, пока играет музыка</string>
+    <string name="settings_music_hint_title">Музыка</string>
+    <string name="settings_music_hint">Эквалайзер, скорость, таймер сна, тексты и другие музыкальные настройки находятся на экране плеера.</string>
+    <string name="settings_about_section">О приложении</string>
+    <string name="settings_about_row">О приложении Resonance</string>
+    <string name="settings_about_row_desc">Возможности, приватность, что нового</string>
+    <string name="settings_version">Версия %1$s</string>
+    <string name="stats_streak">Текущая серия</string>
+    <string name="stats_streak_best">Лучшая серия</string>
+    <string name="stats_last_days">Последние 14 дней</string>
+    <string name="stats_peak">До %1$d мин в день</string>
+    <string name="about_title">О приложении</string>
+    <string name="about_tagline">Музыкальный плеер, который остаётся на вашем устройстве</string>
+    <string name="about_description">Resonance — бесплатный плеер с открытым исходным кодом для музыки, которая уже есть на телефоне. Без аккаунтов, рекламы и интернета.</string>
+    <string name="about_features_title">Что умеет</string>
+    <string name="about_features">• Песни, альбомы, исполнители, папки и поиск
+• Плейлисты, очередь с перетаскиванием, избранное, умные списки
+• Эквалайзер с пресетами, усилением баса и виртуализатором
+• Живое кольцо спектра или крутящаяся виниловая пластинка вокруг обложки
+• Цвета из обложки альбома
+• Синхронные тексты из .lrc файлов
+• Таймер сна, скорость воспроизведения, пропуск тишины
+• Статистика прослушивания с графиком по дням и сериями
+• Виджет на главном экране
+• Дизайн Material You, светлая, тёмная и AMOLED темы, русский и английский</string>
+    <string name="about_privacy_title">Приватность</string>
+    <string name="about_privacy_body">В Resonance нет аккаунтов, серверов, аналитики и рекламы, а также разрешения на доступ в интернет, поэтому ничего не может быть отправлено наружу. Музыка читается через медиатеку Android. Плейлисты, избранное и статистика хранятся только на этом устройстве. Папка с текстами открывается, только если вы сами её выбрали.</string>
+    <string name="about_changelog_title">Что нового</string>
+    <string name="about_changelog_120_title">Версия 1.2.0</string>
+    <string name="about_changelog_120">• Тексты песен из .lrc файлов
+• Режим виниловой пластинки
+• Перетаскивание в очереди
+• Умные списки: недавно добавленные, чаще всего играет, ни разу не слушали
+• Статистика: график по дням и серии
+• Эквалайзер, скорость и таймер сна перенесены в плеер
+• Запуск при подключении наушников
+• Более плавные переходы</string>
+    <string name="about_changelog_110_title">Версия 1.1.0</string>
+    <string name="about_changelog_110">• Визуализатор спектра и жесты на обложке
+• Избранное, папки, настройки
+• Таймер сна, скорость, пропуск тишины
+• Виджет на главном экране</string>
+    <string name="about_changelog_100_title">Версия 1.0.0</string>
+    <string name="about_changelog_100">• Первый релиз: библиотека, плейлисты, очередь, эквалайзер, статистика, цвета из обложки</string>
+    <string name="about_project_title">Проект</string>
+    <string name="about_github">Исходный код на GitHub</string>
+    <string name="about_license">Открытый код, лицензия MIT</string>
+    <string name="about_author_title">Автор</string>
+    <string name="about_author_name">xenone-beta</string>
+    <string name="about_thanks">Спасибо, что пользуетесь Resonance!</string>
+    <string name="about_thanks_sub">Если нравится, поставьте проекту звезду на GitHub.</string>
     <plurals name="songs_count">
         <item quantity="one">%d песня</item>
         <item quantity="few">%d песни</item>
@@ -117,5 +191,11 @@
         <item quantity="few">%d раза</item>
         <item quantity="many">%d раз</item>
         <item quantity="other">%d раза</item>
+    </plurals>
+    <plurals name="days_count">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дня</item>
     </plurals>
 </resources>

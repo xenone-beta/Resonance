@@ -12,7 +12,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.NewReleases
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -38,7 +41,7 @@ import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.NameDialog
 
 @Composable
-fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () -> Unit) {
+fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () -> Unit, onOpenSmart: (String) -> Unit) {
     val playlists by vm.playlists.collectAsState()
     val favorites by vm.favoriteTracks.collectAsState()
     var creating by remember { mutableStateOf(false) }
@@ -69,6 +72,15 @@ fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () 
                     Text(pluralStringResource(R.plurals.songs_count, favorites.size, favorites.size))
                 },
             )
+        }
+        item(key = "smart-recent") {
+            SmartRow(Icons.Rounded.NewReleases, R.string.smart_recent, R.string.smart_recent_hint) { onOpenSmart("RECENT") }
+        }
+        item(key = "smart-most") {
+            SmartRow(Icons.Rounded.TrendingUp, R.string.smart_most_played, R.string.smart_most_played_hint) { onOpenSmart("MOST_PLAYED") }
+        }
+        item(key = "smart-never") {
+            SmartRow(Icons.Rounded.Explore, R.string.smart_never_played, R.string.smart_never_played_hint) { onOpenSmart("NEVER_PLAYED") }
         }
         item(key = "new") {
             ListItem(
@@ -110,4 +122,20 @@ fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () 
             )
         }
     }
+}
+
+@Composable
+private fun SmartRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: Int, hint: Int, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            Box(
+                Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+        },
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = { Text(stringResource(hint)) },
+    )
 }

@@ -1,6 +1,8 @@
 package dev.resonance.player.ui.stats
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -38,7 +44,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
+import dev.resonance.player.core.Streaks
 import dev.resonance.player.core.TimeFormat
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 import dev.resonance.player.ui.common.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +59,10 @@ fun StatsScreen(vm: MainViewModel, onBack: () -> Unit) {
     val topTracks by vm.topTracks.collectAsState()
     val topArtists by vm.topArtists.collectAsState()
     val recent by vm.recent.collectAsState()
+    val daily by vm.dailyStats.collectAsState()
+    val dayMap = remember(daily) { daily.associate { it.day to it.totalMs } }
+    val activeDays = remember(daily) { daily.filter { it.totalMs > 0 }.map { it.day }.toSet() }
+    val today = remember { LocalDate.now().toEpochDay() }
     var confirmClear by remember { mutableStateOf(false) }
 
     if (confirmClear) {
@@ -96,6 +110,29 @@ fun StatsScreen(vm: MainViewModel, onBack: () -> Unit) {
                     TotalCard(plays.toString(), stringResource(R.string.stats_plays), Modifier.weight(1f))
                     TotalCard(durationLabel(totalMs), stringResource(R.string.stats_time), Modifier.weight(1f))
                 }
+            }
+            item(key = "streaks") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    val current = Streaks.current(activeDays, today)
+                    val best = Streaks.longest(activeDays)
+                    TotalCard(
+                        pluralStringResource(R.plurals.days_count, current, current),
+                        stringResource(R.string.stats_streak),
+                        Modifier.weight(1f),
+                    )
+                    TotalCard(
+                        pluralStringResource(R.plurals.days_count, best, best),
+                        stringResource(R.string.stats_streak_best),
+                        Modifier.weight(1f),
+                    )
+                }
+            }
+            item(key = "chart") {
+                SectionTitle(stringResource(R.string.stats_last_days))
+                DayChart(dayMap, today)
             }
             if (topTracks.isNotEmpty()) {
                 item(key = "h-tracks") { SectionTitle(stringResource(R.string.stats_top_tracks)) }
@@ -162,4 +199,52 @@ private fun StatRow(title: String, subtitle: String, trailing: String?) {
             { Text(trailing, style = MaterialTheme.typography.labelLarge) }
         } else null,
     )
+}
+
+/** Bars for the last 14 days, today on the right. Height is minutes listened. */
+@Composable
+private fun DayChart(minutesByDay: Map<Long, Long>, today: Long) {
+    val days = (today - 13..today).toList()
+    val values = days.map { (minutesByDay[it] ?: 0L) / 60_000f }
+    val peak = (values.maxOrNull() ?: 0f).coerceAtLeast(1f)
+    val barColor = MaterialTheme.colorScheme.primary
+    val emptyColor = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                stringResource(R.string.stats_peak, peak.toInt()),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Canvas(Modifier.fillMaxWidth().height(120.dp).padding(top = 8.dp)) {
+                val slot = size.width / days.size
+                val barWidth = slot * 0.62f
+                values.forEachIndexed { index, minutes ->
+                    val barHeight = if (minutes <= 0f) 4.dp.toPx() else (size.height * (minutes / peak)).coerceAtLeast(6.dp.toPx())
+                    drawRoundRect(
+                        color = if (minutes <= 0f) emptyColor else barColor,
+                        topLeft = Offset(index * slot + (slot - barWidth) / 2f, size.height - barHeight),
+                        size = Size(barWidth, barHeight),
+                        cornerRadius = CornerRadius(barWidth / 2f, barWidth / 2f),
+                    )
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                days.forEach { day ->
+                    val label = LocalDate.ofEpochDay(day).dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.getDefault())
+                    Text(
+                        label,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
 }

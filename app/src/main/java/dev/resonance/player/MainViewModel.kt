@@ -10,6 +10,9 @@ import dev.resonance.player.data.FavoriteEntity
 import dev.resonance.player.data.Folder
 import dev.resonance.player.data.ArtistStat
 import dev.resonance.player.data.LibraryGrouping
+import dev.resonance.player.core.LyricLine
+import dev.resonance.player.core.Streaks
+import dev.resonance.player.data.DailyStatEntity
 import dev.resonance.player.data.PlayStatEntity
 import dev.resonance.player.data.PlaylistEntity
 import dev.resonance.player.data.PlaylistSummary
@@ -30,8 +33,18 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+sealed interface LyricsState {
+    data object NoFolder : LyricsState
+    data object NotFound : LyricsState
+    data class Found(val lines: List<LyricLine>) : LyricsState
+}
+
+/** A ready-made list such as "recently added". */
+enum class SmartList { RECENT, MOST_PLAYED, NEVER_PLAYED }
 
 data class LibraryState(
     val loading: Boolean = true,
@@ -135,6 +148,43 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- Lyrics ----------------------------------------------------------------------------
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val lyrics: StateFlow<LyricsState> = combine(
+        player.state.map { it.current }.distinctUntilChanged(),
+        settings.lyricsFolder,
+    ) { entry, folder -> entry to folder }
+        .mapLatest { (entry, folder) ->
+            when {
+                folder == null -> LyricsState.NoFolder
+                entry == null -> LyricsState.NotFound
+                else -> resonance.lyrics.find(folder, entry)?.let { LyricsState.Found(it) } ?: LyricsState.NotFound
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, LyricsState.NotFound)
+
+    // ---- Smart lists -----------------------------------------------------------------------
+
+    private val playedIds = statsDao.observeTopTracks(Int.MAX_VALUE)
+        .map { stats -> stats.map { it.trackId } }
+
+    /** The songs of a [SmartList], recomputed when the library or the statistics change. */
+    fun smartTracks(kind: SmartList): kotlinx.coroutines.flow.Flow<List<Track>> =
+        combine(_library, playedIds) { lib, played ->
+            when (kind) {
+                SmartList.RECENT -> lib.tracks.sortedByDescending { it.dateAdded }.take(SMART_LIMIT)
+                SmartList.MOST_PLAYED -> {
+                    val byId = lib.tracks.associateBy { it.id }
+                    played.mapNotNull { byId[it] }.take(SMART_LIMIT)
+                }
+                SmartList.NEVER_PLAYED -> {
+                    val seen = played.toSet()
+                    lib.tracks.filter { it.id !in seen }
+                }
+            }
+        }
+
     // ---- Playlists -------------------------------------------------------------------------
 
     val playlists: StateFlow<List<PlaylistSummary>> = playlistDao.observeSummaries()
@@ -217,8 +267,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val totalMs: StateFlow<Long> = statsDao.observeTotalMs()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
+    private val dailyDao = db.dailyDao()
+
+    val dailyStats: StateFlow<List<DailyStatEntity>> = dailyDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     fun clearStats() {
-        viewModelScope.launch { statsDao.clear() }
+        viewModelScope.launch {
+            statsDao.clear()
+            dailyDao.clear()
+        }
     }
 
     override fun onCleared() {
@@ -227,5 +285,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val COVER_SIZE = 768
+        const val SMART_LIMIT = 100
     }
 }

@@ -75,7 +75,7 @@ fun LibraryScreen(
     onOpenPlaylist: (Long) -> Unit,
     onOpenFolder: (String) -> Unit,
     onOpenFavorites: () -> Unit,
-    onOpenEqualizer: () -> Unit,
+    onOpenSmart: (String) -> Unit,
     onOpenStats: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -107,11 +107,6 @@ fun LibraryScreen(
                             Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.eq_title)) },
-                                leadingIcon = { Icon(Icons.Rounded.Equalizer, null) },
-                                onClick = { menuOpen = false; onOpenEqualizer() },
-                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.stats_title)) },
                                 leadingIcon = { Icon(Icons.Rounded.BarChart, null) },
@@ -173,7 +168,7 @@ fun LibraryScreen(
                         items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onOpenArtist(artist.name) } }
                     }
                 }
-                tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites)
+                tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites, onOpenSmart)
                 else -> if (folders.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {

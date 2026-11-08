@@ -16,6 +16,8 @@ data class Track(
     val dateAdded: Long,
     /** Directory that holds the file, or empty when unknown. */
     val folder: String = "",
+    /** Full file path, used to find a lyrics file with the same name. */
+    val path: String = "",
 ) {
     val uri: Uri
         get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)

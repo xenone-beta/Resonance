@@ -3,6 +3,11 @@ package dev.resonance.player.playback
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.glance.appwidget.updateAll
 import androidx.media3.common.AudioAttributes
@@ -38,6 +43,7 @@ class PlaybackService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var artwork: ArtworkLoader
+    private var deviceCallback: AudioDeviceCallback? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -103,6 +109,21 @@ class PlaybackService : MediaSessionService() {
             }
         }
 
+        // Optionally start playing when headphones or a Bluetooth speaker connect.
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val handler = Handler(Looper.getMainLooper())
+        var ready = false
+        handler.postDelayed({ ready = true }, 1500) // the system reports already-connected devices at first
+        val callback = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+                if (!ready || !app.settings.headphonesAutoplay.value) return
+                val headphones = addedDevices.any { it.isSink && it.type in HEADPHONE_TYPES }
+                if (headphones && player.mediaItemCount > 0 && !player.isPlaying) player.play()
+            }
+        }
+        audioManager.registerAudioDeviceCallback(callback, handler)
+        deviceCallback = callback
+
         val openApp = PendingIntent.getActivity(
             this,
             0,
@@ -133,6 +154,7 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         tracker?.stop()
+        deviceCallback?.let { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).unregisterAudioDeviceCallback(it) }
         NowPlayingSnapshot.player = null
         NowPlayingSnapshot.isPlaying = false
         (application as ResonanceApplication).effects.release()
@@ -148,5 +170,11 @@ class PlaybackService : MediaSessionService() {
 
     private companion object {
         const val WIDGET_COVER_PX = 256
+        val HEADPHONE_TYPES = setOf(
+            AudioDeviceInfo.TYPE_WIRED_HEADSET,
+            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+            AudioDeviceInfo.TYPE_USB_HEADSET,
+        )
     }
 }

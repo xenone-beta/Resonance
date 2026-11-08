@@ -10,6 +10,7 @@ import dev.resonance.player.data.Track
 
 internal const val EXTRA_ALBUM_ID = "albumId"
 internal const val EXTRA_DURATION = "durationMs"
+internal const val EXTRA_PATH = "path"
 
 fun albumArtUri(albumId: Long): Uri =
     ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId)
@@ -18,6 +19,7 @@ fun Track.toMediaItem(): MediaItem {
     val extras = Bundle().apply {
         putLong(EXTRA_ALBUM_ID, albumId)
         putLong(EXTRA_DURATION, durationMs)
+        putString(EXTRA_PATH, path)
     }
     return MediaItem.Builder()
         .setMediaId(id.toString())
@@ -44,6 +46,7 @@ data class QueueEntry(
     val album: String,
     val albumId: Long,
     val durationMs: Long,
+    val path: String = "",
 )
 
 fun MediaItem.toQueueEntry(): QueueEntry {
@@ -55,5 +58,6 @@ fun MediaItem.toQueueEntry(): QueueEntry {
         album = mediaMetadata.albumTitle?.toString().orEmpty(),
         albumId = extras?.getLong(EXTRA_ALBUM_ID, -1L) ?: -1L,
         durationMs = extras?.getLong(EXTRA_DURATION, 0L) ?: 0L,
+        path = extras?.getString(EXTRA_PATH).orEmpty(),
     )
 }

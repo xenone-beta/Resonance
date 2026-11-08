@@ -52,6 +52,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Lyrics
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import android.graphics.Bitmap
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animate
@@ -90,8 +101,9 @@ import dev.resonance.player.core.TimeFormat
 import dev.resonance.player.ui.theme.AlbumTheme
 
 /** Full-screen player. Its whole color scheme comes from the current album cover. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit) {
+fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit, onOpenEqualizer: () -> Unit) {
     val state by vm.player.state.collectAsState()
     val seed by vm.seed.collectAsState()
     val cover by vm.cover.collectAsState()
@@ -99,7 +111,10 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit)
     val ringOn by vm.settings.visualizer.collectAsState()
     val favorites by vm.favoriteIds.collectAsState()
     val sleep by vm.sleepTimer.state.collectAsState()
+    val vinyl by vm.settings.vinylMode.collectAsState()
+    val speed by vm.settings.speed.collectAsState()
     var sleepDialog by remember { mutableStateOf(false) }
+    var sheet by remember { mutableStateOf<PlayerSheet?>(null) }
     val entry = state.current
 
     // Nothing left to show (the queue was emptied): leave the screen.
@@ -130,17 +145,8 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit)
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Row {
-                        IconButton(onClick = { sleepDialog = true }) {
-                            Icon(
-                                Icons.Rounded.Bedtime,
-                                contentDescription = stringResource(R.string.sleep_title),
-                                tint = if (sleep.active) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                            )
-                        }
-                        IconButton(onClick = onOpenQueue) {
-                            Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.queue_title))
-                        }
+                    IconButton(onClick = onOpenQueue) {
+                        Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.queue_title))
                     }
                 }
 
@@ -151,27 +157,30 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit)
                     cover = cover,
                     isPlaying = state.isPlaying,
                     ringOn = ringOn,
+                    vinyl = vinyl,
                     onToggleRing = { vm.settings.setVisualizer(!ringOn) },
                     onCollapse = onBack,
                 )
 
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
+                    Crossfade(targetState = entry, animationSpec = tween(300), modifier = Modifier.weight(1f), label = "title") { shown ->
+                    Column {
                         Text(
-                            entry.title,
+                            shown.title,
                             style = MaterialTheme.typography.headlineSmall,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(
-                            entry.artist.ifEmpty { stringResource(R.string.unknown_artist) },
+                            shown.artist.ifEmpty { stringResource(R.string.unknown_artist) },
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
                     }
                     val favorite = entry.trackId in favorites
                     IconButton(onClick = { vm.toggleFavorite(entry.trackId) }) {
@@ -187,8 +196,27 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit)
                 SeekBar(vm, entry.durationMs)
 
                 Spacer(Modifier.weight(1f))
+                QuickActions(
+                    speed = speed,
+                    sleepActive = sleep.active,
+                    onEqualizer = onOpenEqualizer,
+                    onSpeed = { sheet = PlayerSheet.SPEED },
+                    onSleep = { sleepDialog = true },
+                    onLyrics = { sheet = PlayerSheet.LYRICS },
+                    onMore = { sheet = PlayerSheet.MORE },
+                )
+                Spacer(Modifier.weight(1f))
                 Controls(vm, state.isPlaying, state.shuffle, state.repeatMode)
                 Spacer(Modifier.height(24.dp))
+            }
+            sheet?.let { current ->
+                ModalBottomSheet(onDismissRequest = { sheet = null }) {
+                    when (current) {
+                        PlayerSheet.SPEED -> SpeedSheetContent(vm)
+                        PlayerSheet.MORE -> MoreSheetContent(vm)
+                        PlayerSheet.LYRICS -> LyricsSheetContent(vm)
+                    }
+                }
             }
         }
     }
@@ -205,6 +233,7 @@ private fun CoverStage(
     cover: Bitmap?,
     isPlaying: Boolean,
     ringOn: Boolean,
+    vinyl: Boolean,
     onToggleRing: () -> Unit,
     onCollapse: () -> Unit,
 ) {
@@ -215,7 +244,7 @@ private fun CoverStage(
     var hintTick by remember { mutableIntStateOf(0) }
 
     val fraction by animateFloatAsState(if (ringOn) 0.66f else 1f, tween(450), label = "coverFraction")
-    val corner by animateIntAsState(if (ringOn) 50 else 12, tween(450), label = "coverCorner")
+    val corner by animateIntAsState(if (ringOn || vinyl) 50 else 12, tween(450), label = "coverCorner")
     val pauseScale by animateFloatAsState(if (isPlaying) 1f else 0.94f, tween(300), label = "pauseScale")
     val ringAlpha by animateFloatAsState(if (ringOn) 1f else 0f, tween(350), label = "ringAlpha")
 
@@ -237,6 +266,16 @@ private fun CoverStage(
                 levels[i] += (t - levels[i]) * (if (t > levels[i]) 0.55f else 0.12f)
             }
             frame++
+        }
+    }
+    val vinylAngle = remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(vinyl, isPlaying) {
+        if (!vinyl || !isPlaying) return@LaunchedEffect
+        var last = withFrameNanos { it }
+        while (true) {
+            val now = withFrameNanos { it }
+            vinylAngle.floatValue = (vinylAngle.floatValue + (now - last) / 1_000_000_000f * 60f) % 360f
+            last = now
         }
     }
     LaunchedEffect(hintTick) {
@@ -331,26 +370,36 @@ private fun CoverStage(
                     alpha = 1f - (travel / size.width).coerceIn(0f, 1f) * 0.6f
                     scaleX = pauseScale
                     scaleY = pauseScale
-                }
-                .clip(RoundedCornerShape(corner))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
+                },
             contentAlignment = Alignment.Center,
         ) {
-            Crossfade(targetState = cover, animationSpec = tween(350), label = "cover") { art ->
-                if (art != null) {
-                    Image(
-                        bitmap = art.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(96.dp),
-                    )
+            if (vinyl) {
+                VinylDisc(cover = cover, angle = vinylAngle)
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(corner))
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Crossfade(targetState = cover, animationSpec = tween(350), label = "cover") { art ->
+                        if (art != null) {
+                            Image(
+                                bitmap = art.asImageBitmap(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            Icon(
+                                Icons.Rounded.MusicNote,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(96.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -451,5 +500,136 @@ private fun Controls(vm: MainViewModel, isPlaying: Boolean, shuffle: Boolean, re
                 },
             )
         }
+    }
+}
+
+/** A black record with grooves; the cover is the center label. It spins while [angle] changes. */
+@Composable
+private fun VinylDisc(cover: Bitmap?, angle: androidx.compose.runtime.State<Float>) {
+    val vinylBlack = Color(0xFF101010)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(CircleShape)
+            .background(vinylBlack),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.fillMaxSize().graphicsLayer { rotationZ = angle.value }, contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val radius = size.minDimension / 2f
+                for (i in 0..14) {
+                    drawCircle(
+                        color = Color.White.copy(alpha = if (i % 4 == 0) 0.10f else 0.05f),
+                        radius = radius * (0.42f + i * 0.037f),
+                        style = Stroke(width = 1.dp.toPx()),
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(0.38f)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                val art = cover
+                if (art != null) {
+                    Image(
+                        bitmap = art.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Icon(
+                        Icons.Rounded.MusicNote,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(40.dp),
+                    )
+                }
+            }
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(color = vinylBlack, radius = size.minDimension * 0.02f)
+            }
+        }
+        // The light sheen stays still while the record turns under it.
+        Canvas(Modifier.fillMaxSize()) {
+            drawCircle(
+                brush = Brush.sweepGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.12f), Color.Transparent, Color.White.copy(alpha = 0.12f), Color.Transparent),
+                ),
+                radius = size.minDimension / 2f,
+            )
+        }
+    }
+}
+
+enum class PlayerSheet { SPEED, MORE, LYRICS }
+
+@Composable
+private fun QuickActions(
+    speed: Float,
+    sleepActive: Boolean,
+    onEqualizer: () -> Unit,
+    onSpeed: () -> Unit,
+    onSleep: () -> Unit,
+    onLyrics: () -> Unit,
+    onMore: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        QuickButton(stringResource(R.string.eq_title), false, onEqualizer) {
+            Icon(Icons.Rounded.Equalizer, null)
+        }
+        QuickButton(stringResource(R.string.speed_short), speed != 1f, onSpeed) {
+            if (speed != 1f) Text(speedLabel(speed), style = MaterialTheme.typography.labelLarge) else Icon(Icons.Rounded.Speed, null)
+        }
+        QuickButton(stringResource(R.string.sleep_short), sleepActive, onSleep) {
+            Icon(Icons.Rounded.Bedtime, null)
+        }
+        QuickButton(stringResource(R.string.lyrics_title), false, onLyrics) {
+            Icon(Icons.Rounded.Lyrics, null)
+        }
+        QuickButton(stringResource(R.string.more_short), false, onMore) {
+            Icon(Icons.Rounded.Tune, null)
+        }
+    }
+}
+
+@Composable
+private fun QuickButton(label: String, active: Boolean, onClick: () -> Unit, icon: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .width(60.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 56.dp, height = 36.dp)
+                .clip(CircleShape)
+                .background(
+                    if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalContentColor provides
+                    if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            ) { icon() }
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
     }
 }

@@ -15,6 +15,7 @@ No accounts, no ads, no internet permission: it plays the music that is already 
 - **Gestures on the cover**: swipe for next/previous, swipe down to close, double-tap the sides for ±10 s, tap to toggle the ring
 - **Favorites**, **folders**, **sleep timer**, playback speed, skip silence
 - **Settings**: light/dark/AMOLED theme, wallpaper or accent colors
+- **Lyrics** from .lrc files in a folder you choose, **vinyl record mode**, drag-and-drop queue, smart lists, daily chart and streaks in statistics
 - **Home screen widget** with cover and playback buttons
 - Background playback with notification and lock-screen controls (Media3)
 - Material You wallpaper colors, light and dark theme, English and Russian

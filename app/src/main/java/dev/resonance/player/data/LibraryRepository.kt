@@ -57,6 +57,7 @@ class LibraryRepository(private val context: Context) {
                         trackNumber = cursor.getInt(number) % 1000,
                         dateAdded = cursor.getLong(added),
                         folder = cursor.getString(data).orEmpty().substringBeforeLast('/', ""),
+                        path = cursor.getString(data).orEmpty(),
                     ),
                 )
             }

@@ -105,6 +105,31 @@ interface FavoritesDao {
     suspend fun remove(trackId: Long)
 }
 
+// ---- Daily totals (for charts and streaks) -------------------------------------------------
+
+/** Listening per calendar day. [day] is the local epoch day (days since 1970-01-01). */
+@Entity(tableName = "daily_stats")
+data class DailyStatEntity(
+    @PrimaryKey val day: Long,
+    val totalMs: Long,
+    val plays: Int,
+)
+
+@Dao
+interface DailyDao {
+    @Query("SELECT * FROM daily_stats WHERE day = :day")
+    suspend fun get(day: Long): DailyStatEntity?
+
+    @Upsert
+    suspend fun upsert(entity: DailyStatEntity)
+
+    @Query("SELECT * FROM daily_stats ORDER BY day DESC LIMIT 800")
+    fun observeAll(): Flow<List<DailyStatEntity>>
+
+    @Query("DELETE FROM daily_stats")
+    suspend fun clear()
+}
+
 // ---- Listening statistics ------------------------------------------------------------------
 
 /** Per-track totals. Title and artist are copied here so statistics outlive a deleted file. */
@@ -156,20 +181,31 @@ interface StatsDao {
 }
 
 @Database(
-    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class, FavoriteEntity::class],
-    version = 2,
+    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class, FavoriteEntity::class, DailyStatEntity::class],
+    version = 3,
     exportSchema = false,
 )
 abstract class ResonanceDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun statsDao(): StatsDao
     abstract fun favoritesDao(): FavoritesDao
+    abstract fun dailyDao(): DailyDao
 
     companion object {
         fun create(context: Context): ResonanceDatabase =
             Room.databaseBuilder(context.applicationContext, ResonanceDatabase::class.java, "resonance.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
+
+        /** Version 3 adds per-day totals; everything else is kept. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `daily_stats` (`day` INTEGER NOT NULL, " +
+                        "`totalMs` INTEGER NOT NULL, `plays` INTEGER NOT NULL, PRIMARY KEY(`day`))",
+                )
+            }
+        }
 
         /** Version 2 adds favorites; playlists and statistics are kept. */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -184,7 +220,7 @@ abstract class ResonanceDatabase : RoomDatabase() {
 }
 
 /** Writes listening totals. Time is always added; the play counter only when the track counted as a play. */
-class StatsRepository(private val dao: StatsDao) {
+class StatsRepository(private val dao: StatsDao, private val daily: DailyDao) {
     suspend fun record(
         trackId: Long,
         title: String,
@@ -204,6 +240,15 @@ class StatsRepository(private val dao: StatsDao) {
                 playCount = (old?.playCount ?: 0) + if (countedAsPlay) 1 else 0,
                 totalMs = (old?.totalMs ?: 0L) + listenedMs,
                 lastPlayed = System.currentTimeMillis(),
+            ),
+        )
+        val today = java.time.LocalDate.now().toEpochDay()
+        val oldDay = daily.get(today)
+        daily.upsert(
+            DailyStatEntity(
+                day = today,
+                totalMs = (oldDay?.totalMs ?: 0L) + listenedMs,
+                plays = (oldDay?.plays ?: 0) + if (countedAsPlay) 1 else 0,
             ),
         )
     }

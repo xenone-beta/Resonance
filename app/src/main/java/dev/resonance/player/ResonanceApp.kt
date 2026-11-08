@@ -5,11 +5,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.resonance.player.ui.about.AboutScreen
 import dev.resonance.player.ui.equalizer.EqualizerScreen
 import dev.resonance.player.ui.library.LibraryScreen
 import dev.resonance.player.ui.library.PlaylistScreen
@@ -26,7 +34,14 @@ fun ResonanceApp(vm: MainViewModel) {
     val back: () -> Unit = { nav.popBackStack() }
     val openPlayer: () -> Unit = { nav.navigate("player") { launchSingleTop = true } }
 
-    NavHost(navController = nav, startDestination = "library") {
+    NavHost(
+        navController = nav,
+        startDestination = "library",
+        enterTransition = { slideInHorizontally(tween(280)) { it / 8 } + fadeIn(tween(280)) },
+        exitTransition = { fadeOut(tween(180)) },
+        popEnterTransition = { fadeIn(tween(280)) },
+        popExitTransition = { slideOutHorizontally(tween(240)) { it / 8 } + fadeOut(tween(240)) },
+    ) {
         composable("library") {
             LibraryScreen(
                 vm = vm,
@@ -36,16 +51,54 @@ fun ResonanceApp(vm: MainViewModel) {
                 onOpenPlaylist = { nav.navigate("playlist/$it") },
                 onOpenFolder = { nav.navigate("folder/${Uri.encode(it)}") },
                 onOpenFavorites = { nav.navigate("favorites") },
-                onOpenEqualizer = { nav.navigate("equalizer") },
+                onOpenSmart = { nav.navigate("smart/$it") },
                 onOpenStats = { nav.navigate("stats") },
                 onOpenSettings = { nav.navigate("settings") },
             )
         }
-        composable("player") { PlayerScreen(vm, onBack = back, onOpenQueue = { nav.navigate("queue") }) }
+        composable(
+            "player",
+            // The full player slides up from the mini player and back down.
+            enterTransition = { slideInVertically(tween(350)) { it / 3 } + fadeIn(tween(350)) },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(250)) },
+            popExitTransition = { slideOutVertically(tween(300)) { it / 3 } + fadeOut(tween(300)) },
+        ) {
+            PlayerScreen(
+                vm,
+                onBack = back,
+                onOpenQueue = { nav.navigate("queue") },
+                onOpenEqualizer = { nav.navigate("equalizer") },
+            )
+        }
         composable("queue") { QueueScreen(vm, onBack = back) }
         composable("equalizer") { EqualizerScreen(vm, onBack = back) }
         composable("stats") { StatsScreen(vm, onBack = back) }
-        composable("settings") { SettingsScreen(vm, onBack = back) }
+        composable("settings") { SettingsScreen(vm, onBack = back, onOpenAbout = { nav.navigate("about") }) }
+        composable("about") { AboutScreen(onBack = back) }
+        composable(
+            "smart/{kind}",
+            arguments = listOf(navArgument("kind") { type = NavType.StringType }),
+        ) { entry ->
+            val kind = remember(entry) {
+                runCatching { SmartList.valueOf(entry.arguments?.getString("kind").orEmpty()) }.getOrDefault(SmartList.RECENT)
+            }
+            val flow = remember(kind) { vm.smartTracks(kind) }
+            val tracks by flow.collectAsState(initial = emptyList())
+            TrackListScreen(
+                title = androidx.compose.ui.res.stringResource(
+                    when (kind) {
+                        SmartList.RECENT -> R.string.smart_recent
+                        SmartList.MOST_PLAYED -> R.string.smart_most_played
+                        SmartList.NEVER_PLAYED -> R.string.smart_never_played
+                    },
+                ),
+                tracks = tracks,
+                vm = vm,
+                onBack = back,
+                onOpenPlayer = openPlayer,
+            )
+        }
         composable("favorites") {
             val favorites by vm.favoriteTracks.collectAsState()
             TrackListScreen(

@@ -100,6 +100,80 @@
     <string name="widget_description">Cover, title and playback controls</string>
     <string name="widget_nothing">Nothing playing</string>
     <string name="widget_open">Tap to open Resonance</string>
+    <string name="speed_hint">Changes tempo without changing pitch</string>
+    <string name="speed_short">Speed</string>
+    <string name="sleep_short">Sleep</string>
+    <string name="more_short">More</string>
+    <string name="lyrics_title">Lyrics</string>
+    <string name="player_settings_title">Playback settings</string>
+    <string name="settings_headphones">Play when headphones connect</string>
+    <string name="settings_headphones_hint">Resume the queue when headphones or a Bluetooth device connect</string>
+    <string name="settings_lyrics_folder">Lyrics folder</string>
+    <string name="lyrics_folder_none">Not chosen</string>
+    <string name="lyrics_folder_set">Folder with .lrc files chosen; tap to change</string>
+    <string name="lyrics_no_folder">Choose a folder with .lrc files to see lyrics here. Each file should be named like the song file.</string>
+    <string name="lyrics_choose_folder">Choose folder</string>
+    <string name="lyrics_not_found">No lyrics found for this song. Put a .lrc file with the same name as the song into your lyrics folder.</string>
+    <string name="lyrics_change_folder">Change folder</string>
+    <string name="drag_to_reorder">Hold and drag to reorder</string>
+    <string name="smart_recent">Recently added</string>
+    <string name="smart_recent_hint">The newest 100 songs</string>
+    <string name="smart_most_played">Most played</string>
+    <string name="smart_most_played_hint">Your favorites by play count</string>
+    <string name="smart_never_played">Never played</string>
+    <string name="smart_never_played_hint">Songs you have not listened to yet</string>
+    <string name="settings_vinyl">Vinyl record mode</string>
+    <string name="settings_vinyl_hint">The cover becomes a record that spins while music plays</string>
+    <string name="settings_music_hint_title">Music</string>
+    <string name="settings_music_hint">Equalizer, playback speed, sleep timer, lyrics and other music options are on the player screen.</string>
+    <string name="settings_about_section">About</string>
+    <string name="settings_about_row">About Resonance</string>
+    <string name="settings_about_row_desc">Features, privacy, what\'s new</string>
+    <string name="settings_version">Version %1$s</string>
+    <string name="stats_streak">Current streak</string>
+    <string name="stats_streak_best">Best streak</string>
+    <string name="stats_last_days">Last 14 days</string>
+    <string name="stats_peak">Up to %1$d min a day</string>
+    <string name="about_title">About</string>
+    <string name="about_tagline">A music player that stays on your device</string>
+    <string name="about_description">Resonance is a free, open-source player for the music already on your phone. No accounts, no ads, no internet.</string>
+    <string name="about_features_title">What it can do</string>
+    <string name="about_features">• Songs, albums, artists, folders and search
+• Playlists, queue with drag and drop, favorites, smart lists
+• Equalizer with presets, bass boost and virtualizer
+• Live spectrum ring or a spinning vinyl record around the cover
+• Colors taken from the album cover
+• Synchronised lyrics from .lrc files
+• Sleep timer, playback speed, skip silence
+• Listening statistics with daily chart and streaks
+• Home screen widget
+• Material You design, light, dark and AMOLED themes, English and Russian</string>
+    <string name="about_privacy_title">Privacy</string>
+    <string name="about_privacy_body">Resonance has no accounts, servers, analytics or ads, and no permission to use the internet, so nothing can be sent anywhere. It reads your music through the Android media library. Playlists, favorites and statistics are stored only on this device. The lyrics folder is opened only if you choose one.</string>
+    <string name="about_changelog_title">What\'s new</string>
+    <string name="about_changelog_120_title">Version 1.2.0</string>
+    <string name="about_changelog_120">• Lyrics from .lrc files
+• Vinyl record mode
+• Drag and drop in the queue
+• Smart lists: recently added, most played, never played
+• Statistics: daily chart and streaks
+• Equalizer, speed and sleep timer moved to the player
+• Play when headphones connect
+• Smoother transitions</string>
+    <string name="about_changelog_110_title">Version 1.1.0</string>
+    <string name="about_changelog_110">• Spectrum visualizer and cover gestures
+• Favorites, folders, settings
+• Sleep timer, playback speed, skip silence
+• Home screen widget</string>
+    <string name="about_changelog_100_title">Version 1.0.0</string>
+    <string name="about_changelog_100">• First release: library, playlists, queue, equalizer, statistics, album colors</string>
+    <string name="about_project_title">Project</string>
+    <string name="about_github">Source code on GitHub</string>
+    <string name="about_license">Open source, MIT license</string>
+    <string name="about_author_title">Author</string>
+    <string name="about_author_name">xenone-beta</string>
+    <string name="about_thanks">Thank you for using Resonance!</string>
+    <string name="about_thanks_sub">If you like it, give the project a star on GitHub.</string>
     <plurals name="songs_count">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
@@ -111,5 +185,9 @@
     <plurals name="plays_count">
         <item quantity="one">%d play</item>
         <item quantity="other">%d plays</item>
+    </plurals>
+    <plurals name="days_count">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
     </plurals>
 </resources>

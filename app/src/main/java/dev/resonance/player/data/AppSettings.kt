@@ -54,6 +54,20 @@ class AppSettings(context: Context) {
     private val _skipSilence = MutableStateFlow(prefs.getBoolean(KEY_SKIP_SILENCE, false))
     val skipSilence: StateFlow<Boolean> = _skipSilence.asStateFlow()
 
+    private val _vinyl = MutableStateFlow(prefs.getBoolean(KEY_VINYL, false))
+    val vinylMode: StateFlow<Boolean> = _vinyl.asStateFlow()
+
+    private val _headphonesAutoplay = MutableStateFlow(prefs.getBoolean(KEY_HEADPHONES, false))
+    val headphonesAutoplay: StateFlow<Boolean> = _headphonesAutoplay.asStateFlow()
+
+    /** Folder (a SAF tree URI) that holds .lrc lyric files, or null. */
+    private val _lyricsFolder = MutableStateFlow(prefs.getString(KEY_LYRICS, null))
+    val lyricsFolder: StateFlow<String?> = _lyricsFolder.asStateFlow()
+
+    fun setVinylMode(value: Boolean) { prefs.edit().putBoolean(KEY_VINYL, value).apply(); _vinyl.value = value }
+    fun setHeadphonesAutoplay(value: Boolean) { prefs.edit().putBoolean(KEY_HEADPHONES, value).apply(); _headphonesAutoplay.value = value }
+    fun setLyricsFolder(value: String?) { prefs.edit().putString(KEY_LYRICS, value).apply(); _lyricsFolder.value = value }
+
     fun setThemeMode(value: Int) { prefs.edit().putInt(KEY_THEME, value).apply(); _themeMode.value = value }
     fun setColorSource(value: Int) { prefs.edit().putInt(KEY_SOURCE, value).apply(); _colorSource.value = value }
     fun setAccent(value: Int) { prefs.edit().putInt(KEY_ACCENT, value).apply(); _accent.value = value }
@@ -70,5 +84,8 @@ class AppSettings(context: Context) {
         const val KEY_VISUALIZER = "visualizer"
         const val KEY_SPEED = "speed"
         const val KEY_SKIP_SILENCE = "skip_silence"
+        const val KEY_VINYL = "vinyl"
+        const val KEY_HEADPHONES = "headphones_autoplay"
+        const val KEY_LYRICS = "lyrics_folder"
     }
 }
