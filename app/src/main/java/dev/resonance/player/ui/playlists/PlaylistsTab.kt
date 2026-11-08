@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -37,8 +38,9 @@ import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.NameDialog
 
 @Composable
-fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit) {
+fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () -> Unit) {
     val playlists by vm.playlists.collectAsState()
+    val favorites by vm.favoriteTracks.collectAsState()
     var creating by remember { mutableStateOf(false) }
 
     if (creating) {
@@ -51,6 +53,23 @@ fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit) {
     }
 
     LazyColumn(Modifier.fillMaxSize()) {
+        item(key = "favorites") {
+            ListItem(
+                modifier = Modifier.clickable(onClick = onOpenFavorites),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = {
+                    Box(
+                        Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.Favorite, null, tint = MaterialTheme.colorScheme.onTertiaryContainer) }
+                },
+                headlineContent = { Text(stringResource(R.string.favorites_title)) },
+                supportingContent = {
+                    Text(pluralStringResource(R.plurals.songs_count, favorites.size, favorites.size))
+                },
+            )
+        }
         item(key = "new") {
             ListItem(
                 modifier = Modifier.clickable { creating = true },

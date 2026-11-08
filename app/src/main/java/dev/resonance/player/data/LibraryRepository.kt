@@ -26,6 +26,7 @@ class LibraryRepository(private val context: Context) {
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.TRACK,
             MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATA,
         )
         // Music only (no ringtones or recordings), and skip clips shorter than 10 seconds.
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 10000"
@@ -41,6 +42,7 @@ class LibraryRepository(private val context: Context) {
             val duration = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
             val number = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
             val added = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val data = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
             while (cursor.moveToNext()) {
                 result.add(
@@ -54,6 +56,7 @@ class LibraryRepository(private val context: Context) {
                         // MediaStore stores disc and track together: 2005 = disc 2, track 5.
                         trackNumber = cursor.getInt(number) % 1000,
                         dateAdded = cursor.getLong(added),
+                        folder = cursor.getString(data).orEmpty().substringBeforeLast('/', ""),
                     ),
                 )
             }

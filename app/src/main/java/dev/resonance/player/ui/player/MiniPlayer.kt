@@ -34,9 +34,10 @@ import dev.resonance.player.ui.theme.AlbumTheme
 fun MiniPlayer(vm: MainViewModel, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val state by vm.player.state.collectAsState()
     val seed by vm.seed.collectAsState()
+    val albumColors by vm.settings.albumColors.collectAsState()
     val entry = state.current ?: return
 
-    AlbumTheme(seed) {
+    AlbumTheme(if (albumColors) seed else null) {
         Surface(
             modifier = modifier
                 .fillMaxWidth()

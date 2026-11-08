@@ -12,6 +12,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 // ---- Playlists -----------------------------------------------------------------------------
@@ -83,6 +85,26 @@ interface PlaylistDao {
     suspend fun maxPosition(playlistId: Long): Int
 }
 
+// ---- Favorites -----------------------------------------------------------------------------
+
+@Entity(tableName = "favorites")
+data class FavoriteEntity(
+    @PrimaryKey val trackId: Long,
+    val addedAt: Long,
+)
+
+@Dao
+interface FavoritesDao {
+    @Query("SELECT trackId FROM favorites ORDER BY addedAt DESC")
+    fun observeIds(): Flow<List<Long>>
+
+    @Upsert
+    suspend fun add(entity: FavoriteEntity)
+
+    @Query("DELETE FROM favorites WHERE trackId = :trackId")
+    suspend fun remove(trackId: Long)
+}
+
 // ---- Listening statistics ------------------------------------------------------------------
 
 /** Per-track totals. Title and artist are copied here so statistics outlive a deleted file. */
@@ -134,17 +156,30 @@ interface StatsDao {
 }
 
 @Database(
-    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class],
-    version = 1,
+    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class, FavoriteEntity::class],
+    version = 2,
     exportSchema = false,
 )
 abstract class ResonanceDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun statsDao(): StatsDao
+    abstract fun favoritesDao(): FavoritesDao
 
     companion object {
         fun create(context: Context): ResonanceDatabase =
-            Room.databaseBuilder(context.applicationContext, ResonanceDatabase::class.java, "resonance.db").build()
+            Room.databaseBuilder(context.applicationContext, ResonanceDatabase::class.java, "resonance.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
+
+        /** Version 2 adds favorites; playlists and statistics are kept. */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `favorites` (`trackId` INTEGER NOT NULL, " +
+                        "`addedAt` INTEGER NOT NULL, PRIMARY KEY(`trackId`))",
+                )
+            }
+        }
     }
 }
 

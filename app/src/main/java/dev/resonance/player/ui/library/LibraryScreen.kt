@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,7 +30,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -36,6 +42,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -49,6 +57,7 @@ import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
 import dev.resonance.player.data.Album
 import dev.resonance.player.data.Artist
+import dev.resonance.player.data.Folder
 import dev.resonance.player.ui.common.Cover
 import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.TrackRow
@@ -64,8 +73,11 @@ fun LibraryScreen(
     onOpenAlbum: (Long) -> Unit,
     onOpenArtist: (String) -> Unit,
     onOpenPlaylist: (Long) -> Unit,
+    onOpenFolder: (String) -> Unit,
+    onOpenFavorites: () -> Unit,
     onOpenEqualizer: () -> Unit,
     onOpenStats: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val library by vm.library.collectAsState()
@@ -73,29 +85,53 @@ fun LibraryScreen(
     val songs by vm.visibleTracks.collectAsState()
     val albums by vm.visibleAlbums.collectAsState()
     val artists by vm.visibleArtists.collectAsState()
+    val folders by vm.visibleFolders.collectAsState()
+    var menuOpen by remember { mutableStateOf(false) }
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
 
-    val tabs = listOf(R.string.tab_songs, R.string.tab_albums, R.string.tab_artists, R.string.tab_playlists)
+    val tabs = listOf(
+        R.string.tab_songs, R.string.tab_albums, R.string.tab_artists, R.string.tab_playlists, R.string.tab_folders,
+    )
 
     Scaffold(
         topBar = {
-            Column {
+            Column(Modifier.statusBarsPadding()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SearchField(query, vm::setQuery, Modifier.weight(1f))
-                    IconButton(onClick = onOpenEqualizer) {
-                        Icon(Icons.Rounded.Equalizer, contentDescription = stringResource(R.string.eq_title))
-                    }
-                    IconButton(onClick = onOpenStats) {
-                        Icon(Icons.Rounded.BarChart, contentDescription = stringResource(R.string.stats_title))
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.eq_title)) },
+                                leadingIcon = { Icon(Icons.Rounded.Equalizer, null) },
+                                onClick = { menuOpen = false; onOpenEqualizer() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.stats_title)) },
+                                leadingIcon = { Icon(Icons.Rounded.BarChart, null) },
+                                onClick = { menuOpen = false; onOpenStats() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.settings_title)) },
+                                leadingIcon = { Icon(Icons.Rounded.Settings, null) },
+                                onClick = { menuOpen = false; onOpenSettings() },
+                            )
+                        }
                     }
                 }
-                PrimaryTabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.surface) {
+                PrimaryScrollableTabRow(
+                    selectedTabIndex = tab,
+                    edgePadding = 8.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ) {
                     tabs.forEachIndexed { index, label ->
-                        Tab(selected = tab == index, onClick = { tab = index }, text = { Text(stringResource(label)) })
+                        Tab(selected = tab == index, onClick = { tab = index }, text = { Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge) })
                     }
                 }
             }
@@ -137,7 +173,14 @@ fun LibraryScreen(
                         items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onOpenArtist(artist.name) } }
                     }
                 }
-                else -> PlaylistsTab(vm, onOpenPlaylist)
+                tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites)
+                else -> if (folders.isEmpty()) {
+                    EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
+                } else {
+                    LazyColumn(Modifier.fillMaxSize()) {
+                        items(folders, key = { it.path }) { folder -> FolderRow(folder) { onOpenFolder(folder.path) } }
+                    }
+                }
             }
         }
     }
@@ -206,6 +249,29 @@ private fun AlbumRow(album: Album, vm: MainViewModel, onClick: () -> Unit) {
             val count = pluralStringResource(R.plurals.songs_count, album.tracks.size, album.tracks.size)
             Text(
                 if (album.artist.isEmpty()) count else "${album.artist} · $count",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    )
+}
+
+@Composable
+private fun FolderRow(folder: Folder, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        leadingContent = {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Rounded.Folder, null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+        },
+        headlineContent = { Text(folder.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = {
+            Text(
+                pluralStringResource(R.plurals.songs_count, folder.tracks.size, folder.tracks.size) + " · " +
+                    folder.path.removePrefix("/storage/emulated/0/"),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

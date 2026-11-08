@@ -10,11 +10,22 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import dev.resonance.player.core.AlbumScheme
 import dev.resonance.player.core.SchemeColors
+import dev.resonance.player.data.AppSettings
+import dev.resonance.player.data.ColorSource
+import dev.resonance.player.data.ThemeMode
 
 /** Used when the system has no wallpaper colors (Android 11 and older) and nothing is playing. */
 const val DEFAULT_SEED = 0xFF4F6BD8.toInt()
@@ -66,24 +77,69 @@ fun SchemeColors.toColorScheme(dark: Boolean): ColorScheme {
     }
 }
 
-/** App-wide theme: Material You wallpaper colors on Android 12+, a fixed palette before that. */
+/** Resolved light/dark choice, so nested themes (the album-colored player) follow the app setting. */
+data class Appearance(val dark: Boolean, val amoled: Boolean)
+
+val LocalAppearance = staticCompositionLocalOf { Appearance(dark = false, amoled = false) }
+
+private fun ColorScheme.toAmoled(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0B0B0B),
+    surfaceContainer = Color(0xFF121212),
+    surfaceContainerHigh = Color(0xFF1A1A1A),
+    surfaceContainerHighest = Color(0xFF222222),
+)
+
+/** App-wide theme: wallpaper colors (Android 12+) or a chosen accent; light, dark or pure black. */
 @Composable
-fun ResonanceTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+fun ResonanceTheme(settings: AppSettings, content: @Composable () -> Unit) {
+    val mode by settings.themeMode.collectAsState()
+    val source by settings.colorSource.collectAsState()
+    val accent by settings.accent.collectAsState()
+
+    val dark = when (mode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK, ThemeMode.AMOLED -> true
+        else -> isSystemInDarkTheme()
+    }
+    val amoled = mode == ThemeMode.AMOLED
     val context = LocalContext.current
-    val scheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+
+    val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && source == ColorSource.WALLPAPER) {
         if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     } else {
-        AlbumScheme.generate(DEFAULT_SEED, dark).toColorScheme(dark)
+        AlbumScheme.generate(accent, dark).toColorScheme(dark)
     }
-    MaterialTheme(colorScheme = scheme, content = content)
+    val scheme = if (amoled && dark) base.toAmoled() else base
+
+    // Keep status and navigation bar icons readable on the chosen background.
+    val activity = context as? ComponentActivity
+    SideEffect {
+        activity?.enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT) { dark },
+            navigationBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT) { dark },
+        )
+    }
+
+    CompositionLocalProvider(LocalAppearance provides Appearance(dark, amoled && dark)) {
+        MaterialTheme(colorScheme = scheme, content = content)
+    }
 }
 
-/** Re-themes [content] with colors taken from the album cover, fading between songs. */
+/** Re-themes [content] with colors taken from the album cover, fading between songs. Null keeps the app theme. */
 @Composable
 fun AlbumTheme(seed: Int?, content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    val target = AlbumScheme.generate(seed ?: DEFAULT_SEED, dark).toColorScheme(dark)
+    if (seed == null) {
+        content()
+        return
+    }
+    val appearance = LocalAppearance.current
+    val dark = appearance.dark
+    var target = AlbumScheme.generate(seed, dark).toColorScheme(dark)
+    if (appearance.amoled) target = target.toAmoled()
 
     @Composable
     fun fade(color: Color): Color =

@@ -1,32 +1,64 @@
 package dev.resonance.player.playback
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
+import androidx.glance.appwidget.updateAll
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.audio.AudioProcessor
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import dev.resonance.player.MainActivity
 import dev.resonance.player.ResonanceApplication
+import dev.resonance.player.ui.widget.NowPlayingWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /** Owns the ExoPlayer and its media session, so music keeps playing with the app closed. */
+@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null
     private var tracker: PlayTracker? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private lateinit var artwork: ArtworkLoader
 
     override fun onCreate() {
         super.onCreate()
         val app = application as ResonanceApplication
+        artwork = ArtworkLoader(this)
 
-        val player = ExoPlayer.Builder(this)
+        // The spectrum processor sits in the audio path and feeds the visualizer.
+        val renderers = object : DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean,
+            ): AudioSink =
+                DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf<AudioProcessor>(SpectrumProcessor()))
+                    .build()
+        }
+
+        val player = ExoPlayer.Builder(this, renderers)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -42,10 +74,34 @@ class PlaybackService : MediaSessionService() {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 app.effects.attach(audioSessionId)
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = refreshWidget(player)
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) = refreshWidget(player)
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                // "Stop after this track" has done its job.
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) app.sleepTimer.cancel()
+            }
         })
         app.effects.attach(player.audioSessionId)
+        NowPlayingSnapshot.player = player
 
         tracker = PlayTracker(player, app.stats, scope).also { it.start() }
+
+        // Settings that change how the player behaves.
+        mainScope.launch { app.settings.speed.collect { player.playbackParameters = PlaybackParameters(it, 1f) } }
+        mainScope.launch { app.settings.skipSilence.collect { player.skipSilenceEnabled = it } }
+        mainScope.launch {
+            app.sleepTimer.state.collectLatest { state ->
+                player.pauseAtEndOfMediaItems = state.endOfTrack
+                if (state.endAtElapsed > 0L) {
+                    delay((state.endAtElapsed - SystemClock.elapsedRealtime()).coerceAtLeast(0L))
+                    player.pause()
+                    app.sleepTimer.cancel()
+                }
+            }
+        }
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -58,6 +114,17 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
 
+    private fun refreshWidget(player: Player) {
+        val entry = player.currentMediaItem?.toQueueEntry()
+        mainScope.launch {
+            NowPlayingSnapshot.title = entry?.title.orEmpty()
+            NowPlayingSnapshot.artist = entry?.artist.orEmpty()
+            NowPlayingSnapshot.isPlaying = player.isPlaying
+            NowPlayingSnapshot.cover = entry?.let { artwork.load(it.trackId, it.albumId, WIDGET_COVER_PX) }
+            runCatching { NowPlayingWidget().updateAll(this@PlaybackService) }
+        }
+    }
+
     override fun onTaskRemoved(rootIntent: Intent?) {
         // Swiping the app away stops playback only if nothing is playing.
         val player = session?.player
@@ -66,6 +133,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         tracker?.stop()
+        NowPlayingSnapshot.player = null
+        NowPlayingSnapshot.isPlaying = false
         (application as ResonanceApplication).effects.release()
         session?.run {
             player.release()
@@ -73,6 +142,11 @@ class PlaybackService : MediaSessionService() {
         }
         session = null
         scope.cancel()
+        mainScope.cancel()
         super.onDestroy()
+    }
+
+    private companion object {
+        const val WIDGET_COVER_PX = 256
     }
 }

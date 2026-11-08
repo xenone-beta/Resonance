@@ -11,6 +11,11 @@ No accounts, no ads, no internet permission: it plays the music that is already 
 - **Equalizer**: system equalizer with presets, bass boost and virtualizer (where the device supports them)
 - **Statistics**: plays, listening time, top songs and artists, recently played (stored only on the device)
 - **Album colors**: the full-screen player and mini player take their colors from the current cover
+- **Visualizer**: live spectrum ring around the cover, measured from the player's own audio (no microphone permission)
+- **Gestures on the cover**: swipe for next/previous, swipe down to close, double-tap the sides for ±10 s, tap to toggle the ring
+- **Favorites**, **folders**, **sleep timer**, playback speed, skip silence
+- **Settings**: light/dark/AMOLED theme, wallpaper or accent colors
+- **Home screen widget** with cover and playback buttons
 - Background playback with notification and lock-screen controls (Media3)
 - Material You wallpaper colors, light and dark theme, English and Russian
 

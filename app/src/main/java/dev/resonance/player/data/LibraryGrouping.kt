@@ -31,6 +31,21 @@ object LibraryGrouping {
             }
             .sortedBy { it.name.lowercase() }
 
+    fun folders(tracks: List<Track>): List<Folder> =
+        tracks.filter { it.folder.isNotEmpty() }
+            .groupBy { it.folder }
+            .map { (path, list) -> Folder(path, path.substringAfterLast('/'), list) }
+            .sortedBy { it.name.lowercase() }
+
+    fun searchFolders(folders: List<Folder>, query: String): List<Folder> {
+        val words = normalize(query).split(' ').filter { it.isNotEmpty() }
+        if (words.isEmpty()) return folders
+        return folders.filter { folder ->
+            val haystack = normalize(folder.name)
+            words.all { haystack.contains(it) }
+        }
+    }
+
     /** Keeps tracks whose title, artist or album contains every word of [query] (ignoring case and accents). */
     fun search(tracks: List<Track>, query: String): List<Track> {
         val words = normalize(query).split(' ').filter { it.isNotEmpty() }

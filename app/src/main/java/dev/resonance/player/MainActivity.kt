@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ResonanceTheme {
+            ResonanceTheme((application as ResonanceApplication).settings) {
                 Surface(color = MaterialTheme.colorScheme.surface) {
                     PermissionGate(onGranted = viewModel::startLibrary) {
                         ResonanceApp(viewModel)

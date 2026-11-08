@@ -110,6 +110,15 @@ class PlayerConnection(context: Context) {
     /** Restarts the track after 3 seconds, otherwise goes to the previous one. */
     fun previous() { controller?.seekToPrevious() }
 
+    /** Always goes to the previous song, never restarts the current one. */
+    fun previousTrack() { controller?.seekToPreviousMediaItem() }
+
+    /** Jumps [deltaMs] forward or back inside the current song. */
+    fun seekBy(deltaMs: Long, durationMs: Long) {
+        val target = (_position.value + deltaMs).coerceIn(0L, durationMs.coerceAtLeast(0L))
+        seekTo(target)
+    }
+
     fun seekTo(ms: Long) {
         controller?.seekTo(ms)
         _position.value = ms

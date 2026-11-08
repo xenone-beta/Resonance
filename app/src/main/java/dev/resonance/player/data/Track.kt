@@ -14,6 +14,8 @@ data class Track(
     val durationMs: Long,
     val trackNumber: Int,
     val dateAdded: Long,
+    /** Directory that holds the file, or empty when unknown. */
+    val folder: String = "",
 ) {
     val uri: Uri
         get() = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
@@ -30,4 +32,10 @@ data class Artist(
     val name: String,
     val tracks: List<Track>,
     val albumCount: Int,
+)
+
+data class Folder(
+    val path: String,
+    val name: String,
+    val tracks: List<Track>,
 )

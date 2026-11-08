@@ -28,6 +28,8 @@ fun rememberTrackActions(vm: MainViewModel): TrackActions {
             playNext = { vm.player.playNext(it) },
             addToQueue = { vm.player.addToQueue(listOf(it)) },
             addToPlaylist = { pending = it },
+            isFavorite = { vm.isFavorite(it.id) },
+            toggleFavorite = { vm.toggleFavorite(it.id) },
         )
     }
 }

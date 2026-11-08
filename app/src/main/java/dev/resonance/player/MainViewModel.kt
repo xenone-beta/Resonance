@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.resonance.player.data.Album
 import dev.resonance.player.data.Artist
+import dev.resonance.player.data.FavoriteEntity
+import dev.resonance.player.data.Folder
 import dev.resonance.player.data.ArtistStat
 import dev.resonance.player.data.LibraryGrouping
 import dev.resonance.player.data.PlayStatEntity
@@ -36,6 +38,7 @@ data class LibraryState(
     val tracks: List<Track> = emptyList(),
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
+    val folders: List<Folder> = emptyList(),
 )
 
 /** A playlist row: the stored entry plus the song it points to (null when the file is gone). */
@@ -47,10 +50,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val db = resonance.database
     private val playlistDao = db.playlistDao()
     private val statsDao = db.statsDao()
+    private val favoritesDao = db.favoritesDao()
 
     val player = PlayerConnection(app)
     val artwork = ArtworkLoader(app)
     val effects: EffectsController = resonance.effects
+    val settings = resonance.settings
+    val sleepTimer = resonance.sleepTimer
 
     // ---- Library ---------------------------------------------------------------------------
 
@@ -76,6 +82,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         LibraryGrouping.searchArtists(lib.artists, q)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val visibleFolders: StateFlow<List<Folder>> = combine(_library, debouncedQuery) { lib, q ->
+        LibraryGrouping.searchFolders(lib.folders, q)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private var libraryStarted = false
 
     /** Called once the audio permission is granted. Safe to call repeatedly. */
@@ -90,10 +100,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun refreshLibrary() {
         val tracks = runCatching { resonance.library.load() }.getOrDefault(emptyList())
-        val (albums, artists) = kotlinx.coroutines.withContext(Dispatchers.Default) {
-            LibraryGrouping.albums(tracks) to LibraryGrouping.artists(tracks)
+        val grouped = kotlinx.coroutines.withContext(Dispatchers.Default) {
+            Triple(LibraryGrouping.albums(tracks), LibraryGrouping.artists(tracks), LibraryGrouping.folders(tracks))
         }
-        _library.value = LibraryState(false, tracks, albums, artists)
+        _library.value = LibraryState(false, tracks, grouped.first, grouped.second, grouped.third)
     }
 
     fun trackById(id: Long): Track? = _library.value.tracks.firstOrNull { it.id == id }
@@ -170,6 +180,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeFromPlaylist(entryId: Long) {
         viewModelScope.launch { playlistDao.deleteEntry(entryId) }
+    }
+
+    // ---- Favorites -------------------------------------------------------------------------
+
+    val favoriteIds: StateFlow<Set<Long>> = favoritesDao.observeIds()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** Favorite songs that are still on the device, newest favorite first. */
+    val favoriteTracks: StateFlow<List<Track>> = combine(favoritesDao.observeIds(), _library) { ids, lib ->
+        val byId = lib.tracks.associateBy { it.id }
+        ids.mapNotNull { byId[it] }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun isFavorite(trackId: Long) = trackId in favoriteIds.value
+
+    fun toggleFavorite(trackId: Long) {
+        if (trackId < 0) return
+        viewModelScope.launch {
+            if (isFavorite(trackId)) favoritesDao.remove(trackId)
+            else favoritesDao.add(FavoriteEntity(trackId, System.currentTimeMillis()))
+        }
     }
 
     // ---- Statistics ------------------------------------------------------------------------

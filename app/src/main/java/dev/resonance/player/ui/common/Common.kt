@@ -96,6 +96,8 @@ class TrackActions(
     val playNext: (Track) -> Unit,
     val addToQueue: (Track) -> Unit,
     val addToPlaylist: (Track) -> Unit,
+    val isFavorite: (Track) -> Boolean,
+    val toggleFavorite: (Track) -> Unit,
 )
 
 @Composable
@@ -148,6 +150,16 @@ fun TrackRow(
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.menu_add_playlist)) },
                             onClick = { menuOpen = false; actions.addToPlaylist(track) },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (actions.isFavorite(track)) R.string.menu_unfavorite else R.string.menu_favorite,
+                                    ),
+                                )
+                            },
+                            onClick = { menuOpen = false; actions.toggleFavorite(track) },
                         )
                         extraMenu?.invoke { menuOpen = false }
                     }

@@ -61,4 +61,18 @@ class LibraryGroupingTest {
         assertEquals(listOf("Mixed"), LibraryGrouping.searchAlbums(LibraryGrouping.albums(tracks), "mix").map { it.title })
         assertEquals(listOf("Band C"), LibraryGrouping.searchArtists(LibraryGrouping.artists(tracks), "band c").map { it.name })
     }
+
+    @Test
+    fun groupsAndSearchesFolders() {
+        val withFolders = listOf(
+            tracks[0].copy(folder = "/storage/emulated/0/Music/Rock"),
+            tracks[1].copy(folder = "/storage/emulated/0/Music/Rock"),
+            tracks[2].copy(folder = "/storage/emulated/0/Download"),
+            tracks[3],
+        )
+        val folders = LibraryGrouping.folders(withFolders)
+        assertEquals(listOf("Download", "Rock"), folders.map { it.name })
+        assertEquals(2, folders.last().tracks.size)
+        assertEquals(listOf("Rock"), LibraryGrouping.searchFolders(folders, "roc").map { it.name })
+    }
 }

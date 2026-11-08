@@ -16,6 +16,7 @@ import dev.resonance.player.ui.library.PlaylistScreen
 import dev.resonance.player.ui.library.TrackListScreen
 import dev.resonance.player.ui.player.PlayerScreen
 import dev.resonance.player.ui.player.QueueScreen
+import dev.resonance.player.ui.settings.SettingsScreen
 import dev.resonance.player.ui.stats.StatsScreen
 
 @Composable
@@ -33,14 +34,42 @@ fun ResonanceApp(vm: MainViewModel) {
                 onOpenAlbum = { nav.navigate("album/$it") },
                 onOpenArtist = { nav.navigate("artist/${Uri.encode(it)}") },
                 onOpenPlaylist = { nav.navigate("playlist/$it") },
+                onOpenFolder = { nav.navigate("folder/${Uri.encode(it)}") },
+                onOpenFavorites = { nav.navigate("favorites") },
                 onOpenEqualizer = { nav.navigate("equalizer") },
                 onOpenStats = { nav.navigate("stats") },
+                onOpenSettings = { nav.navigate("settings") },
             )
         }
         composable("player") { PlayerScreen(vm, onBack = back, onOpenQueue = { nav.navigate("queue") }) }
         composable("queue") { QueueScreen(vm, onBack = back) }
         composable("equalizer") { EqualizerScreen(vm, onBack = back) }
         composable("stats") { StatsScreen(vm, onBack = back) }
+        composable("settings") { SettingsScreen(vm, onBack = back) }
+        composable("favorites") {
+            val favorites by vm.favoriteTracks.collectAsState()
+            TrackListScreen(
+                title = androidx.compose.ui.res.stringResource(R.string.favorites_title),
+                tracks = favorites,
+                vm = vm,
+                onBack = back,
+                onOpenPlayer = openPlayer,
+            )
+        }
+        composable(
+            "folder/{path}",
+            arguments = listOf(navArgument("path") { type = NavType.StringType }),
+        ) { entry ->
+            val path = entry.arguments?.getString("path").orEmpty()
+            val folder = remember(library, path) { library.folders.firstOrNull { it.path == path } }
+            TrackListScreen(
+                title = folder?.name.orEmpty(),
+                tracks = folder?.tracks.orEmpty(),
+                vm = vm,
+                onBack = back,
+                onOpenPlayer = openPlayer,
+            )
+        }
         composable(
             "album/{id}",
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
