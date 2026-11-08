@@ -34,6 +34,8 @@ class PlayerConnection(context: Context) {
 
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val userFiles = (appContext as dev.resonance.player.ResonanceApplication).userFiles
+    private fun Track.item(): MediaItem = toMediaItem(userFiles.customCover(id)?.let { android.net.Uri.fromFile(it) })
     private var controller: MediaController? = null
     private var positionJob: Job? = null
 
@@ -92,7 +94,7 @@ class PlayerConnection(context: Context) {
         val c = controller ?: return
         if (tracks.isEmpty()) return
         c.shuffleModeEnabled = shuffle
-        c.setMediaItems(tracks.map { it.toMediaItem() }, startIndex.coerceIn(0, tracks.lastIndex), 0L)
+        c.setMediaItems(tracks.map { it.item() }, startIndex.coerceIn(0, tracks.lastIndex), 0L)
         c.prepare()
         c.play()
     }
@@ -157,14 +159,14 @@ class PlayerConnection(context: Context) {
     fun playNext(track: Track) {
         val c = controller ?: return
         if (c.mediaItemCount == 0) return play(listOf(track))
-        c.addMediaItem(c.currentMediaItemIndex + 1, track.toMediaItem())
+        c.addMediaItem(c.currentMediaItemIndex + 1, track.item())
     }
 
     fun addToQueue(tracks: List<Track>) {
         val c = controller ?: return
         if (tracks.isEmpty()) return
         if (c.mediaItemCount == 0) return play(tracks)
-        c.addMediaItems(tracks.map { it.toMediaItem() })
+        c.addMediaItems(tracks.map { it.item() })
     }
 
     // ---- State -----------------------------------------------------------------------------

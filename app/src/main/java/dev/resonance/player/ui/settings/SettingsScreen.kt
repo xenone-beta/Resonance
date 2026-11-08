@@ -27,7 +27,10 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import dev.resonance.player.ui.common.rememberImagePicker
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -54,6 +57,9 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
     val accent by settings.accent.collectAsState()
     val albumColors by settings.albumColors.collectAsState()
     val vinyl by settings.vinylMode.collectAsState()
+    val backgroundVersion by vm.files.backgroundVersion.collectAsState()
+    val backgroundDim by settings.backgroundDim.collectAsState()
+    val pickBackground = rememberImagePicker { uri, done -> vm.setBackground(uri, done) }
 
     val wallpaperAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
@@ -152,6 +158,26 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                 checked = vinyl,
                 onChange = settings::setVinylMode,
             )
+
+            SectionHeader(stringResource(R.string.settings_background))
+            ListItem(
+                modifier = Modifier.clickable(onClick = pickBackground),
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                headlineContent = { Text(stringResource(R.string.settings_background_choose)) },
+                supportingContent = { Text(stringResource(R.string.settings_background_hint)) },
+            )
+            if (backgroundVersion != 0L) {
+                Label(stringResource(R.string.settings_background_dim))
+                Slider(
+                    value = backgroundDim,
+                    onValueChange = settings::setBackgroundDim,
+                    valueRange = 0.1f..0.85f,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                TextButton(onClick = vm::removeBackground, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(stringResource(R.string.settings_background_remove))
+                }
+            }
 
             SectionHeader(stringResource(R.string.settings_music_hint_title))
             Text(

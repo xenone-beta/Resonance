@@ -32,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /** Owns the ExoPlayer and its media session, so music keeps playing with the app closed. */
@@ -48,7 +49,7 @@ class PlaybackService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val app = application as ResonanceApplication
-        artwork = ArtworkLoader(this)
+        artwork = ArtworkLoader(this, (application as dev.resonance.player.ResonanceApplication).userFiles)
 
         // The spectrum processor sits in the audio path and feeds the visualizer.
         val renderers = object : DefaultRenderersFactory(this) {
@@ -96,7 +97,13 @@ class PlaybackService : MediaSessionService() {
         tracker = PlayTracker(player, app.stats, scope).also { it.start() }
 
         // Settings that change how the player behaves.
-        mainScope.launch { app.settings.speed.collect { player.playbackParameters = PlaybackParameters(it, 1f) } }
+        mainScope.launch {
+            combine(app.settings.speed, app.settings.pitchSemitones) { speed, semitones -> speed to semitones }
+                .collect { (speed, semitones) ->
+                    // Twelve semitones make an octave, which doubles the frequency.
+                    player.playbackParameters = PlaybackParameters(speed, Math.pow(2.0, semitones / 12.0).toFloat())
+                }
+        }
         mainScope.launch { app.settings.skipSilence.collect { player.skipSilenceEnabled = it } }
         mainScope.launch {
             app.sleepTimer.state.collectLatest { state ->

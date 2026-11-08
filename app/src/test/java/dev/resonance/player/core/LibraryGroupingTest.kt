@@ -1,6 +1,7 @@
 package dev.resonance.player.core
 
 import dev.resonance.player.data.LibraryGrouping
+import dev.resonance.player.data.SortKey
 import dev.resonance.player.data.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -74,5 +75,16 @@ class LibraryGroupingTest {
         assertEquals(listOf("Download", "Rock"), folders.map { it.name })
         assertEquals(2, folders.last().tracks.size)
         assertEquals(listOf("Rock"), LibraryGrouping.searchFolders(folders, "roc").map { it.name })
+    }
+
+    @Test
+    fun sortsByDateLengthAndComposer() {
+        val a = Track(1, "A", "", "", 1, 100_000, 0, 10, composer = "Zed")
+        val b = Track(2, "B", "", "", 1, 300_000, 0, 30, composer = "")
+        val c = Track(3, "C", "", "", 1, 200_000, 0, 20, composer = "Amy")
+        val all = listOf(a, b, c)
+        assertEquals(listOf(2L, 3L, 1L), LibraryGrouping.sort(all, SortKey.DATE_ADDED, true).map { it.id })
+        assertEquals(listOf(1L, 3L, 2L), LibraryGrouping.sort(all, SortKey.DURATION, false).map { it.id })
+        assertEquals(listOf(3L, 1L, 2L), LibraryGrouping.sort(all, SortKey.COMPOSER, false).map { it.id })
     }
 }

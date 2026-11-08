@@ -105,6 +105,29 @@ interface FavoritesDao {
     suspend fun remove(trackId: Long)
 }
 
+// ---- Edited song info ----------------------------------------------------------------------
+
+/** Title, artist or album the user typed for a song. Null means "keep what the file says". Files are never touched. */
+@Entity(tableName = "track_overrides")
+data class TrackOverrideEntity(
+    @PrimaryKey val trackId: Long,
+    val title: String?,
+    val artist: String?,
+    val album: String?,
+)
+
+@Dao
+interface OverridesDao {
+    @Query("SELECT * FROM track_overrides")
+    fun observeAll(): Flow<List<TrackOverrideEntity>>
+
+    @Upsert
+    suspend fun upsert(entity: TrackOverrideEntity)
+
+    @Query("DELETE FROM track_overrides WHERE trackId = :trackId")
+    suspend fun delete(trackId: Long)
+}
+
 // ---- Daily totals (for charts and streaks) -------------------------------------------------
 
 /** Listening per calendar day. [day] is the local epoch day (days since 1970-01-01). */
@@ -181,8 +204,8 @@ interface StatsDao {
 }
 
 @Database(
-    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class, FavoriteEntity::class, DailyStatEntity::class],
-    version = 3,
+    entities = [PlaylistEntity::class, PlaylistTrackEntity::class, PlayStatEntity::class, FavoriteEntity::class, DailyStatEntity::class, TrackOverrideEntity::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class ResonanceDatabase : RoomDatabase() {
@@ -190,12 +213,23 @@ abstract class ResonanceDatabase : RoomDatabase() {
     abstract fun statsDao(): StatsDao
     abstract fun favoritesDao(): FavoritesDao
     abstract fun dailyDao(): DailyDao
+    abstract fun overridesDao(): OverridesDao
 
     companion object {
         fun create(context: Context): ResonanceDatabase =
             Room.databaseBuilder(context.applicationContext, ResonanceDatabase::class.java, "resonance.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
+
+        /** Version 4 adds edited song info. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `track_overrides` (`trackId` INTEGER NOT NULL, " +
+                        "`title` TEXT, `artist` TEXT, `album` TEXT, PRIMARY KEY(`trackId`))",
+                )
+            }
+        }
 
         /** Version 3 adds per-day totals; everything else is kept. */
         private val MIGRATION_2_3 = object : Migration(2, 3) {

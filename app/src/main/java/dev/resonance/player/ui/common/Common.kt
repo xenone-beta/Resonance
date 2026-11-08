@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -61,7 +62,8 @@ fun Cover(
     corner: Dp = 12.dp,
 ) {
     val px = with(LocalDensity.current) { size.roundToPx() }.coerceIn(64, 1024)
-    val bitmap by produceState<android.graphics.Bitmap?>(null, trackId, albumId, px) {
+    val coverVersion by loader.version.collectAsState()
+    val bitmap by produceState<android.graphics.Bitmap?>(null, trackId, albumId, px, coverVersion) {
         value = loader.load(trackId, albumId, px)
     }
     val shape = RoundedCornerShape(corner)
@@ -111,6 +113,7 @@ fun TrackRow(
     extraMenu: (@Composable (dismiss: () -> Unit) -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val nav = LocalNavigator.current
     val artist = track.artist.ifEmpty { stringResource(R.string.unknown_artist) }
     ListItem(
         modifier = modifier.clickable(onClick = onClick),
@@ -138,7 +141,12 @@ fun TrackRow(
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
                     }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                        shape = RoundedCornerShape(24.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.menu_play_next)) },
                             onClick = { menuOpen = false; actions.playNext(track) },
@@ -160,6 +168,22 @@ fun TrackRow(
                                 )
                             },
                             onClick = { menuOpen = false; actions.toggleFavorite(track) },
+                        )
+                        if (track.artist.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_go_artist)) },
+                                onClick = { menuOpen = false; nav.openArtist(track.artist) },
+                            )
+                        }
+                        if (track.albumId >= 0) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_go_album)) },
+                                onClick = { menuOpen = false; nav.openAlbum(track.albumId) },
+                            )
+                        }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_edit_info)) },
+                            onClick = { menuOpen = false; nav.editTrack(track.id) },
                         )
                         extraMenu?.invoke { menuOpen = false }
                     }

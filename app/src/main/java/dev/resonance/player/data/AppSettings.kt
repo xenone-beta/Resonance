@@ -64,6 +64,28 @@ class AppSettings(context: Context) {
     private val _lyricsFolder = MutableStateFlow(prefs.getString(KEY_LYRICS, null))
     val lyricsFolder: StateFlow<String?> = _lyricsFolder.asStateFlow()
 
+    private val _sortKey = MutableStateFlow(SortKey.fromOrdinal(prefs.getInt(KEY_SORT, 0)))
+    val sortKey: StateFlow<SortKey> = _sortKey.asStateFlow()
+
+    private val _sortDesc = MutableStateFlow(prefs.getBoolean(KEY_SORT_DESC, false))
+    val sortDescending: StateFlow<Boolean> = _sortDesc.asStateFlow()
+
+    /** Pitch shift in semitones, -6..+6. */
+    private val _pitch = MutableStateFlow(prefs.getInt(KEY_PITCH, 0).coerceIn(-6, 6))
+    val pitchSemitones: StateFlow<Int> = _pitch.asStateFlow()
+
+    /** How much the background photo is darkened (or lightened in a light theme), 0.1..0.85. */
+    private val _bgDim = MutableStateFlow(prefs.getFloat(KEY_BG_DIM, 0.5f))
+    val backgroundDim: StateFlow<Float> = _bgDim.asStateFlow()
+
+    fun setSort(key: SortKey, descending: Boolean) {
+        prefs.edit().putInt(KEY_SORT, key.ordinal).putBoolean(KEY_SORT_DESC, descending).apply()
+        _sortKey.value = key
+        _sortDesc.value = descending
+    }
+    fun setPitchSemitones(value: Int) { val v = value.coerceIn(-6, 6); prefs.edit().putInt(KEY_PITCH, v).apply(); _pitch.value = v }
+    fun setBackgroundDim(value: Float) { val v = value.coerceIn(0.1f, 0.85f); prefs.edit().putFloat(KEY_BG_DIM, v).apply(); _bgDim.value = v }
+
     fun setVinylMode(value: Boolean) { prefs.edit().putBoolean(KEY_VINYL, value).apply(); _vinyl.value = value }
     fun setHeadphonesAutoplay(value: Boolean) { prefs.edit().putBoolean(KEY_HEADPHONES, value).apply(); _headphonesAutoplay.value = value }
     fun setLyricsFolder(value: String?) { prefs.edit().putString(KEY_LYRICS, value).apply(); _lyricsFolder.value = value }
@@ -87,5 +109,9 @@ class AppSettings(context: Context) {
         const val KEY_VINYL = "vinyl"
         const val KEY_HEADPHONES = "headphones_autoplay"
         const val KEY_LYRICS = "lyrics_folder"
+        const val KEY_SORT = "sort_key"
+        const val KEY_SORT_DESC = "sort_desc"
+        const val KEY_PITCH = "pitch"
+        const val KEY_BG_DIM = "bg_dim"
     }
 }

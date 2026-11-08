@@ -33,6 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
+import dev.resonance.player.ui.common.screenColor
+import dev.resonance.player.ui.common.transparentTopBarColors
+import dev.resonance.player.ui.common.barColor
 import dev.resonance.player.ui.common.EmptyState
 import java.util.Locale
 
@@ -42,8 +45,10 @@ fun EqualizerScreen(vm: MainViewModel, onBack: () -> Unit) {
     val fx by vm.effects.state.collectAsState()
 
     Scaffold(
+        containerColor = screenColor(),
         topBar = {
             TopAppBar(
+                colors = transparentTopBarColors(),
                 title = { Text(stringResource(R.string.eq_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

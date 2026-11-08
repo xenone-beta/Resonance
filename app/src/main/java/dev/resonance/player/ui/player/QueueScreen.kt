@@ -43,6 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
+import dev.resonance.player.ui.common.screenColor
+import dev.resonance.player.ui.common.transparentTopBarColors
+import dev.resonance.player.ui.common.barColor
 import dev.resonance.player.ui.common.Cover
 import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.NameDialog
@@ -71,8 +74,10 @@ fun QueueScreen(vm: MainViewModel, onBack: () -> Unit) {
     }
 
     Scaffold(
+        containerColor = screenColor(),
         topBar = {
             TopAppBar(
+                colors = transparentTopBarColors(),
                 title = { Text(stringResource(R.string.queue_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

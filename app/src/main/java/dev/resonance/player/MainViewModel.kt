@@ -18,6 +18,8 @@ import dev.resonance.player.data.PlaylistEntity
 import dev.resonance.player.data.PlaylistSummary
 import dev.resonance.player.data.PlaylistTrackEntity
 import dev.resonance.player.data.Track
+import dev.resonance.player.data.TrackOverrideEntity
+import dev.resonance.player.core.Lrc
 import dev.resonance.player.playback.ArtworkLoader
 import dev.resonance.player.playback.EffectsController
 import dev.resonance.player.playback.PlayerConnection
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -66,10 +69,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val favoritesDao = db.favoritesDao()
 
     val player = PlayerConnection(app)
-    val artwork = ArtworkLoader(app)
+    val artwork = ArtworkLoader(app, resonance.userFiles)
     val effects: EffectsController = resonance.effects
     val settings = resonance.settings
     val sleepTimer = resonance.sleepTimer
+    val files = resonance.userFiles
+    private val overridesDao = db.overridesDao()
 
     // ---- Library ---------------------------------------------------------------------------
 
@@ -83,8 +88,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     @OptIn(FlowPreview::class)
     private val debouncedQuery = _query.debounce(150)
 
-    val visibleTracks: StateFlow<List<Track>> = combine(_library, debouncedQuery) { lib, q ->
-        LibraryGrouping.search(lib.tracks, q)
+    val visibleTracks: StateFlow<List<Track>> = combine(
+        _library, debouncedQuery, settings.sortKey, settings.sortDescending,
+    ) { lib, q, key, desc ->
+        LibraryGrouping.sort(LibraryGrouping.search(lib.tracks, q), key, desc)
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val visibleAlbums: StateFlow<List<Album>> = combine(_library, debouncedQuery) { lib, q ->
@@ -111,12 +118,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Songs exactly as the files describe them. The library is these plus the user's edits. */
+    private val _raw = MutableStateFlow<List<Track>?>(null)
+
     private suspend fun refreshLibrary() {
-        val tracks = runCatching { resonance.library.load() }.getOrDefault(emptyList())
-        val grouped = kotlinx.coroutines.withContext(Dispatchers.Default) {
-            Triple(LibraryGrouping.albums(tracks), LibraryGrouping.artists(tracks), LibraryGrouping.folders(tracks))
+        _raw.value = runCatching { resonance.library.load() }.getOrDefault(emptyList())
+    }
+
+    /** Rebuilds the library whenever the scan or an edit changes. */
+    private fun startGrouping() {
+        viewModelScope.launch {
+            combine(_raw.filterNotNull(), overridesDao.observeAll()) { raw, edits ->
+                val byId = edits.associateBy { it.trackId }
+                val tracks = raw.map { t ->
+                    val e = byId[t.id] ?: return@map t
+                    t.copy(title = e.title ?: t.title, artist = e.artist ?: t.artist, album = e.album ?: t.album)
+                }
+                LibraryState(false, tracks, LibraryGrouping.albums(tracks), LibraryGrouping.artists(tracks), LibraryGrouping.folders(tracks))
+            }.flowOn(Dispatchers.Default).collect { _library.value = it }
         }
-        _library.value = LibraryState(false, tracks, grouped.first, grouped.second, grouped.third)
+    }
+
+    /** The song as its file describes it, ignoring edits. */
+    fun originalTrack(id: Long): Track? = _raw.value?.firstOrNull { it.id == id }
+
+    /** Saves edited info. A field left blank, or equal to the file's, goes back to what the file says. */
+    fun saveTrackInfo(trackId: Long, title: String, artist: String, album: String) {
+        val original = originalTrack(trackId) ?: return
+        fun pick(new: String, old: String) = new.trim().takeIf { it.isNotEmpty() && it != old }
+        val t = pick(title, original.title)
+        val a = pick(artist, original.artist)
+        val b = pick(album, original.album)
+        viewModelScope.launch {
+            if (t == null && a == null && b == null) overridesDao.delete(trackId)
+            else overridesDao.upsert(TrackOverrideEntity(trackId, t, a, b))
+        }
+    }
+
+    fun resetTrackInfo(trackId: Long) {
+        viewModelScope.launch { overridesDao.delete(trackId) }
     }
 
     fun trackById(id: Long): Track? = _library.value.tracks.firstOrNull { it.id == id }
@@ -130,11 +170,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val seed: StateFlow<Int?> = _seed.asStateFlow()
 
     init {
+        startGrouping()
         player.connect()
         viewModelScope.launch {
-            player.state
-                .map { it.current }
-                .distinctUntilChanged()
+            combine(player.state.map { it.current }.distinctUntilChanged(), artwork.version) { entry, _ -> entry }
                 .collect { entry ->
                     if (entry == null) {
                         _cover.value = null
@@ -154,15 +193,53 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val lyrics: StateFlow<LyricsState> = combine(
         player.state.map { it.current }.distinctUntilChanged(),
         settings.lyricsFolder,
-    ) { entry, folder -> entry to folder }
+        files.lyricsVersion,
+    ) { entry, folder, _ -> entry to folder }
         .mapLatest { (entry, folder) ->
+            if (entry == null) return@mapLatest LyricsState.NotFound
+            // Lyrics the user wrote or imported win over files in the lyrics folder.
+            val own = kotlinx.coroutines.withContext(Dispatchers.IO) { files.ownLyrics(entry.trackId) }
             when {
+                own != null -> Lrc.parse(own).takeIf { it.isNotEmpty() }?.let { LyricsState.Found(it) } ?: LyricsState.NotFound
                 folder == null -> LyricsState.NoFolder
-                entry == null -> LyricsState.NotFound
                 else -> resonance.lyrics.find(folder, entry)?.let { LyricsState.Found(it) } ?: LyricsState.NotFound
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, LyricsState.NotFound)
+
+    fun ownLyrics(trackId: Long): String? = files.ownLyrics(trackId)
+
+    fun saveLyrics(trackId: Long, text: String) {
+        viewModelScope.launch(Dispatchers.IO) { files.saveLyrics(trackId, text) }
+    }
+
+    /** Reads a picked .lrc or .txt file. Null when it cannot be read. */
+    suspend fun readTextFile(uri: android.net.Uri): String? = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        runCatching {
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()
+    }
+
+    // ---- Covers and background -------------------------------------------------------------
+
+    fun hasCustomCover(trackId: Long): Boolean = files.customCover(trackId) != null
+
+    fun setCover(trackId: Long, uri: android.net.Uri, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { onResult(files.saveCover(trackId, uri)) }
+    }
+
+    fun removeCover(trackId: Long) = files.removeCover(trackId)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val background: StateFlow<Bitmap?> = files.backgroundVersion
+        .mapLatest { files.loadBackground() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setBackground(uri: android.net.Uri, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { onResult(files.saveBackground(uri)) }
+    }
+
+    fun removeBackground() = files.removeBackground()
 
     // ---- Smart lists -----------------------------------------------------------------------
 

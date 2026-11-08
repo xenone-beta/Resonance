@@ -31,6 +31,13 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
+import dev.resonance.player.data.SortKey
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -64,6 +71,9 @@ import dev.resonance.player.ui.common.TrackRow
 import dev.resonance.player.ui.common.rememberTrackActions
 import dev.resonance.player.ui.playlists.PlaylistsTab
 import dev.resonance.player.ui.player.MiniPlayer
+import dev.resonance.player.ui.common.screenColor
+import dev.resonance.player.ui.common.transparentTopBarColors
+import dev.resonance.player.ui.common.barColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +97,8 @@ fun LibraryScreen(
     val artists by vm.visibleArtists.collectAsState()
     val folders by vm.visibleFolders.collectAsState()
     var menuOpen by remember { mutableStateOf(false) }
+    val sortKey by vm.settings.sortKey.collectAsState()
+    val sortDesc by vm.settings.sortDescending.collectAsState()
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
 
@@ -95,6 +107,7 @@ fun LibraryScreen(
     )
 
     Scaffold(
+        containerColor = screenColor(),
         topBar = {
             Column(Modifier.statusBarsPadding()) {
                 Row(
@@ -106,7 +119,14 @@ fun LibraryScreen(
                         IconButton(onClick = { menuOpen = true }) {
                             Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
                         }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenu(
+                            expanded = menuOpen,
+                            onDismissRequest = { menuOpen = false },
+                            shape = RoundedCornerShape(28.dp),
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            tonalElevation = 3.dp,
+                            offset = DpOffset((-8).dp, 0.dp),
+                        ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.stats_title)) },
                                 leadingIcon = { Icon(Icons.Rounded.BarChart, null) },
@@ -123,7 +143,7 @@ fun LibraryScreen(
                 PrimaryScrollableTabRow(
                     selectedTabIndex = tab,
                     edgePadding = 8.dp,
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = barColor(),
                 ) {
                     tabs.forEachIndexed { index, label ->
                         Tab(selected = tab == index, onClick = { tab = index }, text = { Text(stringResource(label), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge) })
@@ -133,15 +153,26 @@ fun LibraryScreen(
         },
         bottomBar = { MiniPlayer(vm, onOpenPlayer) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        val listPad = PaddingValues(bottom = padding.calculateBottomPadding())
+        Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             when {
                 library.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 tab == 0 -> if (songs.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
-                    LazyColumn(Modifier.fillMaxSize()) {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
                         item(key = "shuffle") {
-                            ShuffleHeader(count = songs.size) { vm.player.play(songs, shuffle = true) }
+                            ShuffleHeader(
+                                count = songs.size,
+                                sortKey = sortKey,
+                                descending = sortDesc,
+                                onSort = { key ->
+                                    // Tapping the active key flips the direction; a new key starts in its natural direction.
+                                    if (key == sortKey) vm.settings.setSort(key, !sortDesc)
+                                    else vm.settings.setSort(key, key.defaultDescending)
+                                },
+                                onShuffle = { vm.player.play(songs, shuffle = true) },
+                            )
                         }
                         itemsIndexed(songs, key = { _, t -> t.id }) { index, track ->
                             TrackRow(
@@ -157,22 +188,22 @@ fun LibraryScreen(
                 tab == 1 -> if (albums.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
-                    LazyColumn(Modifier.fillMaxSize()) {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
                         items(albums, key = { it.id }) { album -> AlbumRow(album, vm) { onOpenAlbum(album.id) } }
                     }
                 }
                 tab == 2 -> if (artists.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
-                    LazyColumn(Modifier.fillMaxSize()) {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
                         items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onOpenArtist(artist.name) } }
                     }
                 }
-                tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites, onOpenSmart)
+                tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites, onOpenSmart, listPad)
                 else -> if (folders.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
-                    LazyColumn(Modifier.fillMaxSize()) {
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
                         items(folders, key = { it.path }) { folder -> FolderRow(folder) { onOpenFolder(folder.path) } }
                     }
                 }
@@ -209,7 +240,14 @@ private fun SearchField(query: String, onChange: (String) -> Unit, modifier: Mod
 }
 
 @Composable
-private fun ShuffleHeader(count: Int, onShuffle: () -> Unit) {
+private fun ShuffleHeader(
+    count: Int,
+    sortKey: SortKey,
+    descending: Boolean,
+    onSort: (SortKey) -> Unit,
+    onShuffle: () -> Unit,
+) {
+    var sortOpen by remember { mutableStateOf(false) }
     ListItem(
         modifier = Modifier.clickable(onClick = onShuffle),
         colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
@@ -223,6 +261,35 @@ private fun ShuffleHeader(count: Int, onShuffle: () -> Unit) {
         },
         headlineContent = { Text(stringResource(R.string.shuffle_all)) },
         supportingContent = { Text(pluralStringResource(R.plurals.songs_count, count, count)) },
+        trailingContent = {
+            Box {
+                IconButton(onClick = { sortOpen = true }) {
+                    Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = stringResource(R.string.sort_title))
+                }
+                DropdownMenu(
+                    expanded = sortOpen,
+                    onDismissRequest = { sortOpen = false },
+                    shape = RoundedCornerShape(24.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ) {
+                    SortKey.entries.forEach { key ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(sortLabel(key))) },
+                            trailingIcon = {
+                                if (key == sortKey) {
+                                    Icon(
+                                        if (descending) Icons.Rounded.ArrowDownward else Icons.Rounded.ArrowUpward,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            },
+                            onClick = { onSort(key) },
+                        )
+                    }
+                }
+            }
+        },
     )
 }
 
@@ -300,4 +367,13 @@ private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
             )
         },
     )
+}
+
+private fun sortLabel(key: SortKey): Int = when (key) {
+    SortKey.TITLE -> R.string.sort_by_title
+    SortKey.ARTIST -> R.string.sort_by_artist
+    SortKey.ALBUM -> R.string.sort_by_album
+    SortKey.DATE_ADDED -> R.string.sort_by_date
+    SortKey.DURATION -> R.string.sort_by_duration
+    SortKey.COMPOSER -> R.string.sort_by_composer
 }

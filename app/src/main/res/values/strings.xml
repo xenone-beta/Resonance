@@ -94,7 +94,7 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_visualizer">Visualizer</string>
     <string name="settings_visualizer_hint">Spectrum ring around the cover; tap the cover to toggle it</string>
-    <string name="settings_speed">Playback speed</string>
+    <string name="settings_speed">Speed &amp; pitch</string>
     <string name="settings_skip_silence">Skip silence</string>
     <string name="settings_skip_silence_hint">Cuts long pauses inside and between songs</string>
     <string name="widget_description">Cover, title and playback controls</string>
@@ -170,8 +170,10 @@
     <string name="about_project_title">Project</string>
     <string name="about_github">Source code on GitHub</string>
     <string name="about_license">Open source, MIT license</string>
-    <string name="about_author_title">Author</string>
-    <string name="about_author_name">xenone-beta</string>
+    <string name="about_credits_title">Credits</string>
+    <string name="about_credits">• @oystrix (GitHub: xenone-beta) — app developer
+• @asau001 — provides ideas for new features
+• @MinusMozgi — provided ideas for improving the app</string>
     <string name="about_thanks">Thank you for using Resonance!</string>
     <string name="about_thanks_sub">If you like it, give the project a star on GitHub.</string>
     <plurals name="songs_count">
@@ -190,4 +192,51 @@
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
+    <string name="save">Save</string>
+    <string name="sort_title">Sort</string>
+    <string name="sort_by_title">Title</string>
+    <string name="sort_by_artist">Artist</string>
+    <string name="sort_by_album">Album</string>
+    <string name="sort_by_date">Date added</string>
+    <string name="sort_by_duration">Length</string>
+    <string name="sort_by_composer">Composer</string>
+    <string name="menu_go_artist">Go to artist</string>
+    <string name="menu_go_album">Go to album</string>
+    <string name="menu_edit_info">Edit info</string>
+    <string name="pitch_title">Pitch</string>
+    <string name="pitch_hint">Shifts the key in semitones without changing the tempo</string>
+    <string name="speed_pitch_reset">Reset speed and pitch</string>
+    <string name="lyrics_edit">Edit lyrics</string>
+    <string name="lyrics_write">Write lyrics</string>
+    <string name="lyrics_edit_title">Lyrics</string>
+    <string name="lyrics_edit_hint">Plain text, or synced lines like [01:23.45] words. Saved only on this device.</string>
+    <string name="lyrics_edit_placeholder">Type the lyrics here…</string>
+    <string name="lyrics_import">Import .lrc</string>
+    <string name="lyrics_import_failed">Could not read that file.</string>
+    <string name="lyrics_stamp">Insert time</string>
+    <string name="lyrics_clear">Clear text</string>
+    <string name="edit_title">Edit song</string>
+    <string name="edit_not_found">Song not found</string>
+    <string name="edit_cover_choose">Choose cover</string>
+    <string name="edit_cover_remove">Remove cover</string>
+    <string name="edit_field_title">Title</string>
+    <string name="edit_field_artist">Artist</string>
+    <string name="edit_field_album">Album</string>
+    <string name="edit_note">Changes are kept inside Resonance. The audio file and its tags are not modified.</string>
+    <string name="edit_reset">Restore original info</string>
+    <string name="image_failed">Could not use that image</string>
+    <string name="settings_background">Background</string>
+    <string name="settings_background_choose">Background photo</string>
+    <string name="settings_background_hint">Shown on every screen except Settings and Statistics</string>
+    <string name="settings_background_dim">Veil strength</string>
+    <string name="settings_background_remove">Remove photo</string>
+    <string name="about_changelog_121_title">Version 1.2.1</string>
+    <string name="about_changelog_121">• Sort songs by title, artist, album, date added, length or composer
+• Background photo
+• Go to artist or album from a song
+• Pitch control
+• Custom song covers
+• Write or import lyrics
+• Edit title, artist and album
+• Rounded menus and a floating mini player</string>
 </resources>

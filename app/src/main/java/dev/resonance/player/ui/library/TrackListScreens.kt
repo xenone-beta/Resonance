@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -49,6 +50,9 @@ import dev.resonance.player.ui.common.NameDialog
 import dev.resonance.player.ui.common.TrackRow
 import dev.resonance.player.ui.common.rememberTrackActions
 import dev.resonance.player.ui.player.MiniPlayer
+import dev.resonance.player.ui.common.screenColor
+import dev.resonance.player.ui.common.transparentTopBarColors
+import dev.resonance.player.ui.common.barColor
 
 /** Songs of one album or one artist. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,10 +67,14 @@ fun TrackListScreen(
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
     Scaffold(
+        containerColor = screenColor(),
         topBar = { ListTopBar(title, onBack) },
         bottomBar = { MiniPlayer(vm, onOpenPlayer) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
+            contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
+        ) {
             item(key = "header") { PlayButtons(tracks, vm) }
             itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
                 TrackRow(
@@ -124,6 +132,7 @@ fun PlaylistScreen(
     }
 
     Scaffold(
+        containerColor = screenColor(),
         topBar = {
             ListTopBar(
                 title = name.orEmpty(),
@@ -140,7 +149,10 @@ fun PlaylistScreen(
         },
         bottomBar = { MiniPlayer(vm, onOpenPlayer) },
     ) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(
+            Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
+            contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
+        ) {
             if (items.isEmpty()) {
                 item(key = "empty") { EmptyState(stringResource(R.string.playlist_empty)) }
             } else {
@@ -186,6 +198,7 @@ private fun ListTopBar(
     actions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {},
 ) {
     TopAppBar(
+        colors = transparentTopBarColors(),
         title = { Text(title.ifEmpty { "…" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
             IconButton(onClick = onBack) {

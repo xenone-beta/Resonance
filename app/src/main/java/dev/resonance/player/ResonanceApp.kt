@@ -1,6 +1,20 @@
 package dev.resonance.player
 
 import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import dev.resonance.player.ui.common.LocalHasBackground
+import dev.resonance.player.ui.common.LocalNavigator
+import dev.resonance.player.ui.common.Navigator
+import dev.resonance.player.ui.edit.EditTrackScreen
+import dev.resonance.player.ui.edit.LyricsEditorScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +48,28 @@ fun ResonanceApp(vm: MainViewModel) {
     val back: () -> Unit = { nav.popBackStack() }
     val openPlayer: () -> Unit = { nav.navigate("player") { launchSingleTop = true } }
 
+    val photo by vm.background.collectAsState()
+    val dim by vm.settings.backgroundDim.collectAsState()
+    val navigator = remember(nav) {
+        Navigator(
+            openAlbum = { nav.navigate("album/$it") },
+            openArtist = { nav.navigate("artist/${Uri.encode(it)}") },
+            editTrack = { nav.navigate("edit/$it") },
+            editLyrics = { nav.navigate("lyrics-edit/$it") },
+        )
+    }
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        photo?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // A veil in the theme's own color keeps text readable in light and dark themes.
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = dim)))
+        }
+    CompositionLocalProvider(LocalHasBackground provides (photo != null), LocalNavigator provides navigator) {
     NavHost(
         navController = nav,
         startDestination = "library",
@@ -73,9 +109,21 @@ fun ResonanceApp(vm: MainViewModel) {
         }
         composable("queue") { QueueScreen(vm, onBack = back) }
         composable("equalizer") { EqualizerScreen(vm, onBack = back) }
-        composable("stats") { StatsScreen(vm, onBack = back) }
-        composable("settings") { SettingsScreen(vm, onBack = back, onOpenAbout = { nav.navigate("about") }) }
-        composable("about") { AboutScreen(onBack = back) }
+        composable("stats") { Plain { StatsScreen(vm, onBack = back) } }
+        composable("settings") { Plain { SettingsScreen(vm, onBack = back, onOpenAbout = { nav.navigate("about") }) } }
+        composable("about") { Plain { AboutScreen(onBack = back) } }
+        composable(
+            "edit/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType }),
+        ) { entry ->
+            Plain { EditTrackScreen(entry.arguments?.getLong("id") ?: -1L, vm, onBack = back, onEditLyrics = navigator.editLyrics) }
+        }
+        composable(
+            "lyrics-edit/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType }),
+        ) { entry ->
+            Plain { LyricsEditorScreen(entry.arguments?.getLong("id") ?: -1L, vm, onBack = back) }
+        }
         composable(
             "smart/{kind}",
             arguments = listOf(navArgument("kind") { type = NavType.StringType }),
@@ -158,6 +206,8 @@ fun ResonanceApp(vm: MainViewModel) {
             PlaylistScreen(entry.arguments?.getLong("id") ?: -1L, vm, onBack = back, onOpenPlayer = openPlayer)
         }
     }
+    }
+    }
 }
 
 @Composable
@@ -165,3 +215,9 @@ private fun stringResourceUnknownAlbum() = androidx.compose.ui.res.stringResourc
 
 @Composable
 private fun stringResourceUnknownArtist() = androidx.compose.ui.res.stringResource(R.string.unknown_artist)
+
+/** Settings, About, Statistics and the editors stay plain so their cards and fields remain readable. */
+@Composable
+private fun Plain(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalHasBackground provides false) { content() }
+}

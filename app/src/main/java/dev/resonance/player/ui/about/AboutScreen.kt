@@ -118,6 +118,9 @@ fun AboutScreen(onBack: () -> Unit) {
                 BodyText(stringResource(R.string.about_privacy_body))
             }
             Section(stringResource(R.string.about_changelog_title)) {
+                Text(stringResource(R.string.about_changelog_121_title), style = MaterialTheme.typography.titleSmall)
+                BodyText(stringResource(R.string.about_changelog_121))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.about_changelog_120_title), style = MaterialTheme.typography.titleSmall)
                 BodyText(stringResource(R.string.about_changelog_120))
                 Spacer(Modifier.height(12.dp))
@@ -139,8 +142,8 @@ fun AboutScreen(onBack: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 BodyText(stringResource(R.string.about_license))
             }
-            Section(stringResource(R.string.about_author_title)) {
-                BodyText(stringResource(R.string.about_author_name))
+            Section(stringResource(R.string.about_credits_title)) {
+                BodyText(stringResource(R.string.about_credits))
             }
 
             // Thanks note at the very bottom.

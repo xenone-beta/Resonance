@@ -17,7 +17,7 @@ class LibraryRepository(private val context: Context) {
     private val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
     suspend fun load(): List<Track> = withContext(Dispatchers.IO) {
-        val projection = arrayOf(
+        val baseProjection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
@@ -28,12 +28,17 @@ class LibraryRepository(private val context: Context) {
             MediaStore.Audio.Media.DATE_ADDED,
             MediaStore.Audio.Media.DATA,
         )
+        // The composer column is missing on some very old media providers; fall back without it.
+        val withComposer = baseProjection + COMPOSER_COLUMN
         // Music only (no ringtones or recordings), and skip clips shorter than 10 seconds.
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= 10000"
         val sort = "${MediaStore.Audio.Media.TITLE} COLLATE NOCASE ASC"
 
         val result = ArrayList<Track>()
-        context.contentResolver.query(collection, projection, selection, null, sort)?.use { cursor ->
+        val cursorOrNull = runCatching { context.contentResolver.query(collection, withComposer, selection, null, sort) }.getOrNull()
+            ?: context.contentResolver.query(collection, baseProjection, selection, null, sort)
+        cursorOrNull?.use { cursor ->
+            val composer = cursor.getColumnIndex(COMPOSER_COLUMN)
             val id = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val title = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artist = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
@@ -58,6 +63,7 @@ class LibraryRepository(private val context: Context) {
                         dateAdded = cursor.getLong(added),
                         folder = cursor.getString(data).orEmpty().substringBeforeLast('/', ""),
                         path = cursor.getString(data).orEmpty(),
+                        composer = if (composer >= 0) cleanName(cursor.getString(composer)) else "",
                     ),
                 )
             }
@@ -74,6 +80,10 @@ class LibraryRepository(private val context: Context) {
         }
         context.contentResolver.registerContentObserver(collection, true, observer)
         awaitClose { context.contentResolver.unregisterContentObserver(observer) }
+    }
+
+    private companion object {
+        const val COMPOSER_COLUMN = "composer"
     }
 
     private fun cleanName(raw: String?): String =

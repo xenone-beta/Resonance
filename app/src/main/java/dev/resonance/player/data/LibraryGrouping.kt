@@ -4,6 +4,22 @@ import java.text.Normalizer
 
 /** Pure functions that turn a flat track list into albums and artists, and filter it by a search query. */
 object LibraryGrouping {
+    /** Orders songs by [key]. Songs without the tag (no artist, album or composer) go last when ascending. */
+    fun sort(tracks: List<Track>, key: SortKey, descending: Boolean): List<Track> {
+        val ci = String.CASE_INSENSITIVE_ORDER
+        val last = "\uFFFF"
+        val comparator: Comparator<Track> = when (key) {
+            SortKey.TITLE -> compareBy<Track, String>(ci) { it.title }
+            SortKey.ARTIST -> compareBy<Track, String>(ci) { it.artist.ifEmpty { last } }.thenBy(ci) { it.title }
+            SortKey.ALBUM -> compareBy<Track, String>(ci) { it.album.ifEmpty { last } }
+                .thenBy { it.trackNumber }.thenBy(ci) { it.title }
+            SortKey.DATE_ADDED -> compareBy<Track> { it.dateAdded }.thenBy(ci) { it.title }
+            SortKey.DURATION -> compareBy<Track> { it.durationMs }.thenBy(ci) { it.title }
+            SortKey.COMPOSER -> compareBy<Track, String>(ci) { it.composer.ifEmpty { last } }.thenBy(ci) { it.title }
+        }
+        return tracks.sortedWith(if (descending) comparator.reversed() else comparator)
+    }
+
 
     fun albums(tracks: List<Track>): List<Album> =
         tracks.groupBy { it.albumId }

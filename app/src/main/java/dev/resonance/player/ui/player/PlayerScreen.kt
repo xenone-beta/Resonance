@@ -58,6 +58,12 @@ import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.ui.graphics.Brush
@@ -99,6 +105,8 @@ import dev.resonance.player.MainViewModel
 import dev.resonance.player.R
 import dev.resonance.player.core.TimeFormat
 import dev.resonance.player.ui.theme.AlbumTheme
+import dev.resonance.player.ui.common.LocalHasBackground
+import dev.resonance.player.ui.common.LocalNavigator
 
 /** Full-screen player. Its whole color scheme comes from the current album cover. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,6 +121,9 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
     val sleep by vm.sleepTimer.state.collectAsState()
     val vinyl by vm.settings.vinylMode.collectAsState()
     val speed by vm.settings.speed.collectAsState()
+    val pitch by vm.settings.pitchSemitones.collectAsState()
+    val nav = LocalNavigator.current
+    var menuOpen by remember { mutableStateOf(false) }
     var sleepDialog by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<PlayerSheet?>(null) }
     val entry = state.current
@@ -124,7 +135,11 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
     if (sleepDialog) SleepTimerDialog(vm.sleepTimer) { sleepDialog = false }
 
     AlbumTheme(if (albumColors) seed else null) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            // Over a background photo the cover colors tint it instead of hiding it.
+            color = if (LocalHasBackground.current) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surface,
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -145,8 +160,41 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    IconButton(onClick = onOpenQueue) {
-                        Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.queue_title))
+                    Row {
+                        IconButton(onClick = onOpenQueue) {
+                            Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = stringResource(R.string.queue_title))
+                        }
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.more))
+                            }
+                            DropdownMenu(
+                                expanded = menuOpen,
+                                onDismissRequest = { menuOpen = false },
+                                shape = RoundedCornerShape(28.dp),
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.menu_edit_info)) },
+                                    leadingIcon = { Icon(Icons.Rounded.Edit, null) },
+                                    onClick = { menuOpen = false; nav.editTrack(entry.trackId) },
+                                )
+                                if (entry.albumId >= 0) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.menu_go_album)) },
+                                        leadingIcon = { Icon(Icons.Rounded.Album, null) },
+                                        onClick = { menuOpen = false; nav.openAlbum(entry.albumId) },
+                                    )
+                                }
+                                if (entry.artist.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.menu_go_artist)) },
+                                        leadingIcon = { Icon(Icons.Rounded.Person, null) },
+                                        onClick = { menuOpen = false; nav.openArtist(entry.artist) },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -179,6 +227,10 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            // Tap the artist to open their page.
+                            modifier = if (shown.artist.isNotEmpty()) {
+                                Modifier.clip(RoundedCornerShape(8.dp)).clickable { nav.openArtist(shown.artist) }
+                            } else Modifier,
                         )
                     }
                     }
@@ -198,6 +250,7 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                 Spacer(Modifier.weight(1f))
                 QuickActions(
                     speed = speed,
+                    pitch = pitch,
                     sleepActive = sleep.active,
                     onEqualizer = onOpenEqualizer,
                     onSpeed = { sheet = PlayerSheet.SPEED },
@@ -214,7 +267,7 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                     when (current) {
                         PlayerSheet.SPEED -> SpeedSheetContent(vm)
                         PlayerSheet.MORE -> MoreSheetContent(vm)
-                        PlayerSheet.LYRICS -> LyricsSheetContent(vm)
+                        PlayerSheet.LYRICS -> LyricsSheetContent(vm) { id -> sheet = null; nav.editLyrics(id) }
                     }
                 }
             }
@@ -570,6 +623,7 @@ enum class PlayerSheet { SPEED, MORE, LYRICS }
 @Composable
 private fun QuickActions(
     speed: Float,
+    pitch: Int,
     sleepActive: Boolean,
     onEqualizer: () -> Unit,
     onSpeed: () -> Unit,
@@ -584,7 +638,7 @@ private fun QuickActions(
         QuickButton(stringResource(R.string.eq_title), false, onEqualizer) {
             Icon(Icons.Rounded.Equalizer, null)
         }
-        QuickButton(stringResource(R.string.speed_short), speed != 1f, onSpeed) {
+        QuickButton(stringResource(R.string.speed_short), speed != 1f || pitch != 0, onSpeed) {
             if (speed != 1f) Text(speedLabel(speed), style = MaterialTheme.typography.labelLarge) else Icon(Icons.Rounded.Speed, null)
         }
         QuickButton(stringResource(R.string.sleep_short), sleepActive, onSleep) {

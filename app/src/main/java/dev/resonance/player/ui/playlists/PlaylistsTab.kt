@@ -41,7 +41,7 @@ import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.NameDialog
 
 @Composable
-fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () -> Unit, onOpenSmart: (String) -> Unit) {
+fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () -> Unit, onOpenSmart: (String) -> Unit, contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues()) {
     val playlists by vm.playlists.collectAsState()
     val favorites by vm.favoriteTracks.collectAsState()
     var creating by remember { mutableStateOf(false) }
@@ -55,7 +55,7 @@ fun PlaylistsTab(vm: MainViewModel, onOpen: (Long) -> Unit, onOpenFavorites: () 
         )
     }
 
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
         item(key = "favorites") {
             ListItem(
                 modifier = Modifier.clickable(onClick = onOpenFavorites),

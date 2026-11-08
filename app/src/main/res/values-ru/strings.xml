@@ -94,7 +94,7 @@
     <string name="settings_playback">Воспроизведение</string>
     <string name="settings_visualizer">Визуализатор</string>
     <string name="settings_visualizer_hint">Кольцо спектра вокруг обложки; касание обложки включает и выключает</string>
-    <string name="settings_speed">Скорость воспроизведения</string>
+    <string name="settings_speed">Скорость и тон</string>
     <string name="settings_skip_silence">Пропуск тишины</string>
     <string name="settings_skip_silence_hint">Убирает долгие паузы внутри и между песнями</string>
     <string name="widget_description">Обложка, название и управление</string>
@@ -170,8 +170,10 @@
     <string name="about_project_title">Проект</string>
     <string name="about_github">Исходный код на GitHub</string>
     <string name="about_license">Открытый код, лицензия MIT</string>
-    <string name="about_author_title">Автор</string>
-    <string name="about_author_name">xenone-beta</string>
+    <string name="about_credits_title">Благодарности</string>
+    <string name="about_credits">• @oystrix (GitHub: xenone-beta) — разработчик приложения
+• @asau001 — предоставляет идеи нового функционала
+• @MinusMozgi — предоставил идеи по улучшению приложения</string>
     <string name="about_thanks">Спасибо, что пользуетесь Resonance!</string>
     <string name="about_thanks_sub">Если нравится, поставьте проекту звезду на GitHub.</string>
     <plurals name="songs_count">
@@ -198,4 +200,51 @@
         <item quantity="many">%d дней</item>
         <item quantity="other">%d дня</item>
     </plurals>
+    <string name="save">Сохранить</string>
+    <string name="sort_title">Сортировка</string>
+    <string name="sort_by_title">Название</string>
+    <string name="sort_by_artist">Исполнитель</string>
+    <string name="sort_by_album">Альбом</string>
+    <string name="sort_by_date">Дата добавления</string>
+    <string name="sort_by_duration">Длительность</string>
+    <string name="sort_by_composer">Композитор</string>
+    <string name="menu_go_artist">К исполнителю</string>
+    <string name="menu_go_album">К альбому</string>
+    <string name="menu_edit_info">Изменить данные</string>
+    <string name="pitch_title">Тон</string>
+    <string name="pitch_hint">Сдвигает высоту звука в полутонах, не меняя темп</string>
+    <string name="speed_pitch_reset">Сбросить скорость и тон</string>
+    <string name="lyrics_edit">Изменить текст</string>
+    <string name="lyrics_write">Написать текст</string>
+    <string name="lyrics_edit_title">Текст песни</string>
+    <string name="lyrics_edit_hint">Обычный текст или строки с метками вида [01:23.45] слова. Хранится только на устройстве.</string>
+    <string name="lyrics_edit_placeholder">Введите текст песни…</string>
+    <string name="lyrics_import">Импорт .lrc</string>
+    <string name="lyrics_import_failed">Не удалось прочитать файл.</string>
+    <string name="lyrics_stamp">Вставить время</string>
+    <string name="lyrics_clear">Очистить текст</string>
+    <string name="edit_title">Изменить песню</string>
+    <string name="edit_not_found">Песня не найдена</string>
+    <string name="edit_cover_choose">Выбрать обложку</string>
+    <string name="edit_cover_remove">Убрать обложку</string>
+    <string name="edit_field_title">Название</string>
+    <string name="edit_field_artist">Исполнитель</string>
+    <string name="edit_field_album">Альбом</string>
+    <string name="edit_note">Изменения хранятся внутри Resonance. Аудиофайл и его теги не меняются.</string>
+    <string name="edit_reset">Вернуть исходные данные</string>
+    <string name="image_failed">Не удалось использовать это изображение</string>
+    <string name="settings_background">Фон</string>
+    <string name="settings_background_choose">Фото на фон</string>
+    <string name="settings_background_hint">Показывается на всех экранах, кроме настроек и статистики</string>
+    <string name="settings_background_dim">Сила затемнения</string>
+    <string name="settings_background_remove">Убрать фото</string>
+    <string name="about_changelog_121_title">Версия 1.2.1</string>
+    <string name="about_changelog_121">• Сортировка по названию, исполнителю, альбому, дате добавления, длине и композитору
+• Фото на фон
+• Переход к исполнителю или альбому из песни
+• Изменение тона
+• Своя обложка для песни
+• Свой текст песни или импорт .lrc
+• Правка названия, исполнителя и альбома
+• Скруглённые меню и плавающий мини-плеер</string>
 </resources>

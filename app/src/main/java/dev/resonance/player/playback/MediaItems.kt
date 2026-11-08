@@ -15,7 +15,8 @@ internal const val EXTRA_PATH = "path"
 fun albumArtUri(albumId: Long): Uri =
     ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), albumId)
 
-fun Track.toMediaItem(): MediaItem {
+/** [customCover] is the user's own cover for the song, when there is one. */
+fun Track.toMediaItem(customCover: Uri? = null): MediaItem {
     val extras = Bundle().apply {
         putLong(EXTRA_ALBUM_ID, albumId)
         putLong(EXTRA_DURATION, durationMs)
@@ -29,7 +30,7 @@ fun Track.toMediaItem(): MediaItem {
                 .setTitle(title)
                 .setArtist(artist.ifEmpty { null })
                 .setAlbumTitle(album.ifEmpty { null })
-                .setArtworkUri(albumArtUri(albumId))
+                .setArtworkUri(customCover ?: albumArtUri(albumId))
                 .setIsPlayable(true)
                 .setIsBrowsable(false)
                 .setExtras(extras)

@@ -5,6 +5,7 @@ import dev.resonance.player.data.AppSettings
 import dev.resonance.player.data.LibraryRepository
 import dev.resonance.player.data.ResonanceDatabase
 import dev.resonance.player.data.StatsRepository
+import dev.resonance.player.data.UserFiles
 import dev.resonance.player.playback.EffectsController
 import dev.resonance.player.playback.LyricsRepository
 import dev.resonance.player.playback.SleepTimer
@@ -20,5 +21,6 @@ class ResonanceApplication : Application() {
     val effects: EffectsController by lazy { EffectsController(this) }
     val settings: AppSettings by lazy { AppSettings(this) }
     val sleepTimer: SleepTimer by lazy { SleepTimer() }
+    val userFiles: UserFiles by lazy { UserFiles(this) }
     val lyrics: LyricsRepository by lazy { LyricsRepository(this) }
 }

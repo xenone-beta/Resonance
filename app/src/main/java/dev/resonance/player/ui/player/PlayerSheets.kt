@@ -19,7 +19,14 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+import kotlin.math.roundToInt
+import androidx.compose.material3.OutlinedButton
+import dev.resonance.player.ui.common.LocalNavigator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +46,8 @@ import kotlin.math.max
 
 val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
+fun pitchLabel(semitones: Int): String = if (semitones > 0) "+$semitones" else "$semitones"
+
 fun speedLabel(value: Float): String =
     if (value % 1f == 0f) "${value.toInt()}×" else "$value×"
 
@@ -46,6 +55,7 @@ fun speedLabel(value: Float): String =
 @Composable
 fun SpeedSheetContent(vm: MainViewModel) {
     val speed by vm.settings.speed.collectAsState()
+    val pitch by vm.settings.pitchSemitones.collectAsState()
     Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
         Text(stringResource(R.string.settings_speed), style = MaterialTheme.typography.titleLarge)
         Text(
@@ -61,6 +71,30 @@ fun SpeedSheetContent(vm: MainViewModel) {
                     onClick = { vm.settings.setSpeed(value) },
                     label = { Text(speedLabel(value)) },
                 )
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(stringResource(R.string.pitch_title), style = MaterialTheme.typography.titleLarge)
+            Text(pitchLabel(pitch), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        }
+        Text(
+            stringResource(R.string.pitch_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Slider(
+            value = pitch.toFloat(),
+            onValueChange = { vm.settings.setPitchSemitones(it.roundToInt()) },
+            valueRange = -6f..6f,
+            steps = 11,
+        )
+        if (speed != 1f || pitch != 0) {
+            TextButton(onClick = { vm.settings.setSpeed(1f); vm.settings.setPitchSemitones(0) }) {
+                Text(stringResource(R.string.speed_pitch_reset))
             }
         }
     }
@@ -127,14 +161,20 @@ private fun ToggleRow(title: String, subtitle: String, checked: Boolean, onChang
 }
 
 @Composable
-fun LyricsSheetContent(vm: MainViewModel) {
+fun LyricsSheetContent(vm: MainViewModel, onEdit: (Long) -> Unit) {
     val lyrics by vm.lyrics.collectAsState()
+    val playerState by vm.player.state.collectAsState()
     val pickFolder = rememberLyricsFolderPicker(vm)
+    val trackId = playerState.current?.trackId ?: -1L
 
     Column(Modifier.fillMaxWidth().fillMaxHeight(0.7f).padding(horizontal = 24.dp)) {
         when (val state = lyrics) {
-            LyricsState.NoFolder -> Message(stringResource(R.string.lyrics_no_folder), stringResource(R.string.lyrics_choose_folder), pickFolder)
-            LyricsState.NotFound -> Message(stringResource(R.string.lyrics_not_found), stringResource(R.string.lyrics_change_folder), pickFolder)
+            LyricsState.NoFolder -> Message(stringResource(R.string.lyrics_no_folder), stringResource(R.string.lyrics_choose_folder), pickFolder) {
+                onEdit(trackId)
+            }
+            LyricsState.NotFound -> Message(stringResource(R.string.lyrics_not_found), stringResource(R.string.lyrics_change_folder), pickFolder) {
+                onEdit(trackId)
+            }
             is LyricsState.Found -> {
                 val position by vm.player.position.collectAsState()
                 val lines = state.lines
@@ -143,6 +183,7 @@ fun LyricsSheetContent(vm: MainViewModel) {
                 LaunchedEffect(active) {
                     if (active >= 0) listState.animateScrollToItem(max(0, active - 2))
                 }
+                TextButton(onClick = { onEdit(trackId) }) { Text(stringResource(R.string.lyrics_edit)) }
                 LazyColumn(state = listState, modifier = Modifier.fillMaxWidth()) {
                     itemsIndexed(lines) { index, line ->
                         val synced = line.timeMs >= 0
@@ -167,7 +208,7 @@ fun LyricsSheetContent(vm: MainViewModel) {
 }
 
 @Composable
-private fun Message(text: String, buttonLabel: String, onClick: () -> Unit) {
+private fun Message(text: String, buttonLabel: String, onClick: () -> Unit, onWrite: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(vertical = 24.dp),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
@@ -180,5 +221,6 @@ private fun Message(text: String, buttonLabel: String, onClick: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(onClick = onClick) { Text(buttonLabel) }
+        OutlinedButton(onClick = onWrite) { Text(stringResource(R.string.lyrics_write)) }
     }
 }
