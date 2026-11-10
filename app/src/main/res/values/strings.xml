@@ -139,15 +139,17 @@
     <string name="about_description">Resonance is a free, open-source player for the music already on your phone. No accounts, no ads, no internet.</string>
     <string name="about_features_title">What it can do</string>
     <string name="about_features">• Songs, albums, artists, folders and search
-• Playlists, queue with drag and drop, favorites, smart lists
+• Playlists, a queue with drag and drop, favorites and smart lists
+• Selecting several songs at once
 • Equalizer with presets, bass boost and virtualizer
-• Live spectrum ring or a spinning vinyl record around the cover
+• Spectrum ring or a spinning vinyl record around the cover
 • Colors taken from the album cover
-• Synchronised lyrics from .lrc files
-• Sleep timer, playback speed, skip silence
-• Listening statistics with daily chart and streaks
+• Synchronized lyrics from .lrc files
+• Sleep timer, speed and pitch, skip silence, fade between songs
+• Listening statistics with a daily chart and streaks
 • Home screen widget
-• Material You design, light, dark and AMOLED themes, English and Russian</string>
+• Material You design, light, dark and AMOLED themes
+• English and Russian</string>
     <string name="about_privacy_title">Privacy</string>
     <string name="about_privacy_body">Resonance has no accounts, servers, analytics or ads, and no permission to use the internet, so nothing can be sent anywhere. It reads your music through the Android media library. Playlists, favorites and statistics are stored only on this device. The lyrics folder is opened only if you choose one.</string>
     <string name="about_changelog_title">What\'s new</string>
@@ -156,24 +158,24 @@
 • Vinyl record mode
 • Drag and drop in the queue
 • Smart lists: recently added, most played, never played
-• Statistics: daily chart and streaks
+• Statistics with a daily chart and streaks
 • Equalizer, speed and sleep timer moved to the player
-• Play when headphones connect
+• Playback starts when headphones connect
 • Smoother transitions</string>
     <string name="about_changelog_110_title">Version 1.1.0</string>
     <string name="about_changelog_110">• Spectrum visualizer and cover gestures
-• Favorites, folders, settings
-• Sleep timer, playback speed, skip silence
+• Favorites, folders and settings
+• Sleep timer, playback speed and skip silence
 • Home screen widget</string>
     <string name="about_changelog_100_title">Version 1.0.0</string>
-    <string name="about_changelog_100">• First release: library, playlists, queue, equalizer, statistics, album colors</string>
+    <string name="about_changelog_100">• First release: library, playlists, queue, equalizer, statistics and album colors</string>
     <string name="about_project_title">Project</string>
     <string name="about_github">Source code on GitHub</string>
     <string name="about_license">Open source, MIT license</string>
     <string name="about_credits_title">Credits</string>
-    <string name="about_credits">• @oystrix (GitHub: xenone-beta) — app developer
-• @asau001 — provides ideas for new features
-• @MinusMozgi — provided ideas for improving the app</string>
+    <string name="about_credits">• @oystrix (GitHub: xenone-beta) — developer
+• @asau001 — provided ideas for the app
+• @MinusMozgi — provided ideas and looked for flaws</string>
     <string name="about_thanks">Thank you for using Resonance!</string>
     <string name="about_thanks_sub">If you like it, give the project a star on GitHub.</string>
     <plurals name="songs_count">
@@ -231,20 +233,19 @@
     <string name="settings_background_dim">Veil strength</string>
     <string name="settings_background_remove">Remove photo</string>
     <string name="about_changelog_121_title">Version 1.2.1</string>
-    <string name="about_changelog_121">• Sort songs by title, artist, album, date added, length or composer
+    <string name="about_changelog_121">• Sorting by title, artist, album, date added, length and composer
 • Background photo
 • Go to artist or album from a song
 • Pitch control
 • Custom song covers
-• Write or import lyrics
-• Edit title, artist and album
+• Own or imported lyrics
+• Editing of title, artist and album
 • Rounded menus and a floating mini player</string>
     <string name="settings_seek_style">Seek bar style</string>
     <string name="seek_classic">Classic</string>
     <string name="seek_wavy">Wavy</string>
-    <string name="settings_playback">Playback</string>
     <string name="settings_crossfade">Fade between songs</string>
-    <string name="settings_crossfade_hint">The song fades out at the end and the next one fades in. 0 keeps playback gapless.</string>
+    <string name="settings_crossfade_hint">The song fades out at its end and the next one fades in. With 0 playback is gapless.</string>
     <string name="crossfade_off">Off (gapless)</string>
     <string name="seconds_short">%1$d s</string>
     <string name="selected_count">Selected: %1$d</string>
@@ -254,10 +255,9 @@
     <string name="select_to_queue">To queue</string>
     <string name="select_added">Added: %1$d</string>
     <string name="about_changelog_122_title">Version 1.2.2</string>
-    <string name="about_changelog_122">• Select several songs with a long press and add them to a playlist or the queue at once
-• Playback speed is now a slider (0.5×–2×)
-• Wavy seek bar as an option, and the bar moves smoothly
-• Fade between songs (or gapless with 0)
-• Smoother animations in lists
-</string>
+    <string name="about_changelog_122">• Selecting several songs with a long press
+• Playback speed slider
+• Wavy seek bar option and smoother seeking
+• Fade between songs
+• Smoother list animations</string>
 </resources>
