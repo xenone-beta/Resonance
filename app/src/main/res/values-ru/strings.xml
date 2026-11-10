@@ -247,4 +247,25 @@
 • Свой текст песни или импорт .lrc
 • Правка названия, исполнителя и альбома
 • Скруглённые меню и плавающий мини-плеер</string>
+    <string name="settings_seek_style">Вид полосы перемотки</string>
+    <string name="seek_classic">Обычная</string>
+    <string name="seek_wavy">Волнистая</string>
+    <string name="settings_playback">Воспроизведение</string>
+    <string name="settings_crossfade">Плавный переход между песнями</string>
+    <string name="settings_crossfade_hint">Песня затихает в конце, следующая плавно нарастает. 0 — без пауз (gapless).</string>
+    <string name="crossfade_off">Выкл. (gapless)</string>
+    <string name="seconds_short">%1$d с</string>
+    <string name="selected_count">Выбрано: %1$d</string>
+    <string name="select_all">Выбрать все</string>
+    <string name="select_clear">Снять выделение</string>
+    <string name="select_to_playlist">В плейлист</string>
+    <string name="select_to_queue">В очередь</string>
+    <string name="select_added">Добавлено: %1$d</string>
+    <string name="about_changelog_122_title">Версия 1.2.2</string>
+    <string name="about_changelog_122">• Выделение нескольких песен долгим нажатием: сразу в плейлист или в очередь
+• Скорость воспроизведения теперь ползунок (0.5×–2×)
+• Волнистая полоса перемотки на выбор, и она движется плавно
+• Плавный переход между песнями (или gapless при 0)
+• Более плавные анимации в списках
+</string>
 </resources>

@@ -16,6 +16,7 @@ No accounts, no ads, no internet permission: it plays the music that is already 
 - **Favorites**, **folders**, **sleep timer**, playback speed, skip silence
 - **Settings**: light/dark/AMOLED theme, wallpaper or accent colors
 - **Lyrics** from .lrc files in a folder you choose, **vinyl record mode**, drag-and-drop queue, smart lists, daily chart and streaks in statistics
+- **1.2.2**: multi-select songs, speed slider, wavy seek bar, fade between songs
 - **1.2.1**: song sorting, background photo, go to artist/album, pitch, custom covers, own lyrics, edit title/artist/album (stored in the app only)
 - **Home screen widget** with cover and playback buttons
 - Background playback with notification and lock-screen controls (Media3)

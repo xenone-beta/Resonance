@@ -53,6 +53,8 @@ import dev.resonance.player.ui.player.MiniPlayer
 import dev.resonance.player.ui.common.screenColor
 import dev.resonance.player.ui.common.transparentTopBarColors
 import dev.resonance.player.ui.common.barColor
+import dev.resonance.player.ui.common.SelectionBar
+import dev.resonance.player.ui.common.rememberTrackSelection
 
 /** Songs of one album or one artist. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,10 +68,11 @@ fun TrackListScreen(
 ) {
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
+    val selection = rememberTrackSelection()
     Scaffold(
         containerColor = screenColor(),
         topBar = { ListTopBar(title, onBack) },
-        bottomBar = { MiniPlayer(vm, onOpenPlayer) },
+        bottomBar = { Column { SelectionBar(selection, tracks, vm); MiniPlayer(vm, onOpenPlayer) } },
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
@@ -83,6 +86,8 @@ fun TrackListScreen(
                     isCurrent = playerState.current?.trackId == track.id,
                     onClick = { vm.player.play(tracks, startIndex = index) },
                     actions = actions,
+                    selection = selection,
+                    modifier = Modifier.animateItem(),
                 )
             }
         }
@@ -104,6 +109,7 @@ fun PlaylistScreen(
     val items by itemsFlow.collectAsState(initial = emptyList())
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
+    val selection = rememberTrackSelection()
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
 
@@ -147,7 +153,7 @@ fun PlaylistScreen(
                 },
             )
         },
-        bottomBar = { MiniPlayer(vm, onOpenPlayer) },
+        bottomBar = { Column { SelectionBar(selection, playable, vm); MiniPlayer(vm, onOpenPlayer) } },
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
@@ -177,6 +183,8 @@ fun PlaylistScreen(
                         isCurrent = playerState.current?.trackId == track.id,
                         onClick = { vm.player.play(playable, startIndex = playable.indexOf(track)) },
                         actions = actions,
+                        selection = selection,
+                        modifier = Modifier.animateItem(),
                         extraMenu = { dismiss ->
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.remove_from_playlist)) },

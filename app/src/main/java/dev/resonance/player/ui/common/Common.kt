@@ -1,7 +1,10 @@
 package dev.resonance.player.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,6 +105,7 @@ class TrackActions(
     val toggleFavorite: (Track) -> Unit,
 )
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TrackRow(
     track: Track,
@@ -110,15 +114,35 @@ fun TrackRow(
     onClick: () -> Unit,
     actions: TrackActions,
     modifier: Modifier = Modifier,
+    selection: TrackSelection? = null,
     extraMenu: (@Composable (dismiss: () -> Unit) -> Unit)? = null,
 ) {
+    val selected = selection?.contains(track.id) == true
+    val rowColor by androidx.compose.animation.animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+        label = "rowColor",
+    )
     var menuOpen by remember { mutableStateOf(false) }
     val nav = LocalNavigator.current
     val artist = track.artist.ifEmpty { stringResource(R.string.unknown_artist) }
     ListItem(
-        modifier = modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-        leadingContent = { Cover(loader, track.id, track.albumId, 48.dp, corner = 10.dp) },
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .combinedClickable(
+                onClick = { if (selection?.active == true) selection.toggle(track.id) else onClick() },
+                onLongClick = selection?.let { { it.toggle(track.id) } },
+            ),
+        colors = ListItemDefaults.colors(containerColor = rowColor),
+        leadingContent = {
+            if (selected) {
+                Box(
+                    Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.onPrimary) }
+            } else {
+                Cover(loader, track.id, track.albumId, 48.dp, corner = 10.dp)
+            }
+        },
         headlineContent = {
             Text(
                 track.title,

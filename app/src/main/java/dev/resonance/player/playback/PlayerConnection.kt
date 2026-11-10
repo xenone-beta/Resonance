@@ -121,6 +121,9 @@ class PlayerConnection(context: Context) {
         seekTo(target)
     }
 
+    /** The live position, estimated between server updates, so a UI can draw it every frame. */
+    fun currentPosition(): Long = controller?.currentPosition ?: _position.value
+
     fun seekTo(ms: Long) {
         controller?.seekTo(ms)
         _position.value = ms

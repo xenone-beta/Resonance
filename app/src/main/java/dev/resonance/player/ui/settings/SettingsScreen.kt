@@ -59,6 +59,8 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
     val vinyl by settings.vinylMode.collectAsState()
     val backgroundVersion by vm.files.backgroundVersion.collectAsState()
     val backgroundDim by settings.backgroundDim.collectAsState()
+    val seekStyle by settings.seekStyle.collectAsState()
+    val crossfade by settings.crossfadeSeconds.collectAsState()
     val pickBackground = rememberImagePicker { uri, done -> vm.setBackground(uri, done) }
 
     val wallpaperAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -152,11 +154,42 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                 onChange = settings::setAlbumColors,
             )
 
+            Label(stringResource(R.string.settings_seek_style))
+            FlowRow(
+                Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(selected = seekStyle == 0, onClick = { settings.setSeekStyle(0) }, label = { Text(stringResource(R.string.seek_classic)) })
+                FilterChip(selected = seekStyle == 1, onClick = { settings.setSeekStyle(1) }, label = { Text(stringResource(R.string.seek_wavy)) })
+            }
+
             SwitchRow(
                 title = stringResource(R.string.settings_vinyl),
                 subtitle = stringResource(R.string.settings_vinyl_hint),
                 checked = vinyl,
                 onChange = settings::setVinylMode,
+            )
+
+            SectionHeader(stringResource(R.string.settings_playback))
+            Label(stringResource(R.string.settings_crossfade))
+            Text(
+                if (crossfade == 0) stringResource(R.string.crossfade_off) else stringResource(R.string.seconds_short, crossfade),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Slider(
+                value = crossfade.toFloat(),
+                onValueChange = { settings.setCrossfadeSeconds(it.toInt()) },
+                valueRange = 0f..12f,
+                steps = 11,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+            Text(
+                stringResource(R.string.settings_crossfade_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
 
             SectionHeader(stringResource(R.string.settings_background))

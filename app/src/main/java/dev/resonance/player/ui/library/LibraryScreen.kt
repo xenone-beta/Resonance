@@ -69,6 +69,8 @@ import dev.resonance.player.ui.common.Cover
 import dev.resonance.player.ui.common.EmptyState
 import dev.resonance.player.ui.common.TrackRow
 import dev.resonance.player.ui.common.rememberTrackActions
+import dev.resonance.player.ui.common.SelectionBar
+import dev.resonance.player.ui.common.rememberTrackSelection
 import dev.resonance.player.ui.playlists.PlaylistsTab
 import dev.resonance.player.ui.player.MiniPlayer
 import dev.resonance.player.ui.common.screenColor
@@ -101,6 +103,7 @@ fun LibraryScreen(
     val sortDesc by vm.settings.sortDescending.collectAsState()
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
+    val selection = rememberTrackSelection()
 
     val tabs = listOf(
         R.string.tab_songs, R.string.tab_albums, R.string.tab_artists, R.string.tab_playlists, R.string.tab_folders,
@@ -151,7 +154,7 @@ fun LibraryScreen(
                 }
             }
         },
-        bottomBar = { MiniPlayer(vm, onOpenPlayer) },
+        bottomBar = { Column { SelectionBar(selection, songs, vm); MiniPlayer(vm, onOpenPlayer) } },
     ) { padding ->
         val listPad = PaddingValues(bottom = padding.calculateBottomPadding())
         Box(Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
@@ -181,6 +184,8 @@ fun LibraryScreen(
                                 isCurrent = playerState.current?.trackId == track.id,
                                 onClick = { vm.player.play(songs, startIndex = index) },
                                 actions = actions,
+                                selection = selection,
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }

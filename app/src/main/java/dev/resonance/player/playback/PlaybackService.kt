@@ -45,6 +45,19 @@ class PlaybackService : MediaSessionService() {
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var artwork: ArtworkLoader
     private var deviceCallback: AudioDeviceCallback? = null
+    private var fadeIn = false
+
+    /** Volume 0..1 that fades the song out at its end and, after an automatic change, fades the next one in. */
+    private fun fadeVolume(player: Player, fadeMs: Long): Float {
+        val duration = player.duration
+        if (duration == C.TIME_UNSET || duration <= 0L || !player.isPlaying) return player.volume
+        val fade = minOf(fadeMs, duration / 3)
+        val position = player.currentPosition
+        val out = ((duration - position).toFloat() / fade).coerceIn(0f, 1f)
+        val into = if (fadeIn) (position.toFloat() / fade).coerceIn(0f, 1f) else 1f
+        if (fadeIn && position >= fade) fadeIn = false
+        return minOf(out, into)
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -82,7 +95,11 @@ class PlaybackService : MediaSessionService() {
                 app.effects.attach(audioSessionId)
             }
 
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = refreshWidget(player)
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                // Only a song that follows on by itself fades in; a tap on "next" stays instant.
+                fadeIn = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+                refreshWidget(player)
+            }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) = refreshWidget(player)
 
@@ -103,6 +120,18 @@ class PlaybackService : MediaSessionService() {
                     // Twelve semitones make an octave, which doubles the frequency.
                     player.playbackParameters = PlaybackParameters(speed, Math.pow(2.0, semitones / 12.0).toFloat())
                 }
+        }
+        mainScope.launch {
+            app.settings.crossfadeSeconds.collectLatest { seconds ->
+                if (seconds == 0) {
+                    player.volume = 1f
+                } else {
+                    while (true) {
+                        delay(60)
+                        player.volume = fadeVolume(player, seconds * 1000L)
+                    }
+                }
+            }
         }
         mainScope.launch { app.settings.skipSilence.collect { player.skipSilenceEnabled = it } }
         mainScope.launch {

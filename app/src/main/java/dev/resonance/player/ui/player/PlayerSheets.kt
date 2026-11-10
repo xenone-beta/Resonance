@@ -48,8 +48,10 @@ val PLAYBACK_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
 fun pitchLabel(semitones: Int): String = if (semitones > 0) "+$semitones" else "$semitones"
 
-fun speedLabel(value: Float): String =
-    if (value % 1f == 0f) "${value.toInt()}×" else "$value×"
+fun speedLabel(value: Float): String {
+    val text = String.format(java.util.Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+    return "$text×"
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -64,15 +66,19 @@ fun SpeedSheetContent(vm: MainViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
         )
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PLAYBACK_SPEEDS.forEach { value ->
-                FilterChip(
-                    selected = speed == value,
-                    onClick = { vm.settings.setSpeed(value) },
-                    label = { Text(speedLabel(value)) },
-                )
-            }
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(stringResource(R.string.speed_short), style = MaterialTheme.typography.titleLarge)
+            Text(speedLabel(speed), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         }
+        Slider(
+            value = speed,
+            onValueChange = { vm.settings.setSpeed(it) },
+            valueRange = 0.5f..2f,
+        )
         Row(
             Modifier.fillMaxWidth().padding(top = 24.dp),
             verticalAlignment = Alignment.CenterVertically,

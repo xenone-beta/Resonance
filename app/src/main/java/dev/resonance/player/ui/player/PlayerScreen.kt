@@ -77,6 +77,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.rounded.Bedtime
@@ -480,18 +481,40 @@ private fun CoverStage(
 @Composable
 private fun SeekBar(vm: MainViewModel, durationMs: Long) {
     val position by vm.player.position.collectAsState()
+    val playerState by vm.player.state.collectAsState()
+    val style by vm.settings.seekStyle.collectAsState()
+    val playing = playerState.isPlaying
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableStateOf(0f) }
+    // While playing, the position is read every frame, so the bar glides instead of stepping.
+    var live by remember { mutableStateOf(0L) }
+    androidx.compose.runtime.LaunchedEffect(playing, playerState.currentIndex) {
+        live = vm.player.currentPosition()
+        while (playing) {
+            androidx.compose.runtime.withFrameMillis { live = vm.player.currentPosition() }
+        }
+    }
     val max = durationMs.coerceAtLeast(1L).toFloat()
-    val shown = if (dragging) dragValue else position.toFloat().coerceIn(0f, max)
+    val current = if (playing) live else position
+    val shown = if (dragging) dragValue else current.toFloat().coerceIn(0f, max)
 
     Column {
-        Slider(
-            value = shown,
-            onValueChange = { dragging = true; dragValue = it },
-            onValueChangeFinished = { vm.player.seekTo(dragValue.toLong()); dragging = false },
-            valueRange = 0f..max,
-        )
+        if (style == 1) {
+            WavySeekBar(
+                fraction = shown / max,
+                playing = playing && !dragging,
+                onChange = { dragging = true; dragValue = it * max },
+                onFinish = { vm.player.seekTo(dragValue.toLong()); live = dragValue.toLong(); dragging = false },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            Slider(
+                value = shown,
+                onValueChange = { dragging = true; dragValue = it },
+                onValueChangeFinished = { vm.player.seekTo(dragValue.toLong()); live = dragValue.toLong(); dragging = false },
+                valueRange = 0f..max,
+            )
+        }
         Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
                 TimeFormat.clock(shown.toLong()),
@@ -504,6 +527,86 @@ private fun SeekBar(vm: MainViewModel, durationMs: Long) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** A seek bar whose played part is a travelling wave. It calms into a straight line when paused. */
+@Composable
+private fun WavySeekBar(
+    fraction: Float,
+    playing: Boolean,
+    onChange: (Float) -> Unit,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val active = MaterialTheme.colorScheme.primary
+    val inactive = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)
+    val amplitude by androidx.compose.animation.core.animateFloatAsState(if (playing) 1f else 0f, label = "amplitude")
+    var phase by remember { mutableStateOf(0f) }
+    androidx.compose.runtime.LaunchedEffect(playing) {
+        var last = 0L
+        while (playing) {
+            androidx.compose.runtime.withFrameMillis { t ->
+                if (last != 0L) phase = (phase + (t - last) / 1000f * 5f) % (2f * Math.PI.toFloat())
+                last = t
+            }
+        }
+    }
+    val change by androidx.compose.runtime.rememberUpdatedState(onChange)
+    val finish by androidx.compose.runtime.rememberUpdatedState(onFinish)
+    var pressed by remember { mutableStateOf(false) }
+    val thumbWidth by androidx.compose.animation.core.animateDpAsState(if (pressed) 3.dp else 5.dp, label = "thumb")
+
+    androidx.compose.foundation.Canvas(
+        modifier
+            .height(40.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { offset ->
+                    change((offset.x / size.width).coerceIn(0f, 1f)); finish()
+                })
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { offset -> pressed = true; change((offset.x / size.width).coerceIn(0f, 1f)) },
+                    onDragEnd = { pressed = false; finish() },
+                    onDragCancel = { pressed = false; finish() },
+                    onHorizontalDrag = { pointer, _ ->
+                        pointer.consume()
+                        change((pointer.position.x / size.width).coerceIn(0f, 1f))
+                    },
+                )
+            },
+    ) {
+        val stroke = 4.dp.toPx()
+        val centerY = size.height / 2f
+        val inset = 8.dp.toPx()
+        val width = size.width - inset * 2
+        val x = inset + width * fraction.coerceIn(0f, 1f)
+        val wavelength = 26.dp.toPx()
+        val peak = 4.5.dp.toPx() * amplitude
+
+        // Not yet played: a plain rounded line.
+        drawLine(inactive, androidx.compose.ui.geometry.Offset(x, centerY), androidx.compose.ui.geometry.Offset(inset + width, centerY), stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+
+        // Played: the wave, drawn in short steps so it stays smooth.
+        val path = androidx.compose.ui.graphics.Path()
+        var px = inset
+        path.moveTo(px, centerY + peak * kotlin.math.sin(-phase))
+        while (px < x) {
+            px = (px + 2.dp.toPx()).coerceAtMost(x)
+            val k = ((px - inset) / wavelength) * 2f * Math.PI.toFloat() - phase
+            path.lineTo(px, centerY + peak * kotlin.math.sin(k))
+        }
+        drawPath(path, active, style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+
+        // Thumb: a pill that thins while it is dragged.
+        val half = thumbWidth.toPx() / 2f
+        drawRoundRect(
+            active,
+            topLeft = androidx.compose.ui.geometry.Offset(x - half, centerY - 14.dp.toPx()),
+            size = androidx.compose.ui.geometry.Size(half * 2, 28.dp.toPx()),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(half),
+        )
     }
 }
 

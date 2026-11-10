@@ -118,6 +118,9 @@ fun AboutScreen(onBack: () -> Unit) {
                 BodyText(stringResource(R.string.about_privacy_body))
             }
             Section(stringResource(R.string.about_changelog_title)) {
+                Text(stringResource(R.string.about_changelog_122_title), style = MaterialTheme.typography.titleSmall)
+                BodyText(stringResource(R.string.about_changelog_122))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.about_changelog_121_title), style = MaterialTheme.typography.titleSmall)
                 BodyText(stringResource(R.string.about_changelog_121))
                 Spacer(Modifier.height(12.dp))

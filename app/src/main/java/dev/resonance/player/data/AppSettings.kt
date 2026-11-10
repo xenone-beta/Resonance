@@ -70,6 +70,14 @@ class AppSettings(context: Context) {
     private val _sortDesc = MutableStateFlow(prefs.getBoolean(KEY_SORT_DESC, false))
     val sortDescending: StateFlow<Boolean> = _sortDesc.asStateFlow()
 
+    /** 0 = the classic slider, 1 = wavy line. */
+    private val _seekStyle = MutableStateFlow(prefs.getInt(KEY_SEEK_STYLE, 0))
+    val seekStyle: StateFlow<Int> = _seekStyle.asStateFlow()
+
+    /** Length of the fade between songs in seconds; 0 keeps playback gapless. */
+    private val _crossfade = MutableStateFlow(prefs.getInt(KEY_CROSSFADE, 0).coerceIn(0, 12))
+    val crossfadeSeconds: StateFlow<Int> = _crossfade.asStateFlow()
+
     /** Pitch shift in semitones, -6..+6. */
     private val _pitch = MutableStateFlow(prefs.getInt(KEY_PITCH, 0).coerceIn(-6, 6))
     val pitchSemitones: StateFlow<Int> = _pitch.asStateFlow()
@@ -83,6 +91,8 @@ class AppSettings(context: Context) {
         _sortKey.value = key
         _sortDesc.value = descending
     }
+    fun setSeekStyle(value: Int) { prefs.edit().putInt(KEY_SEEK_STYLE, value).apply(); _seekStyle.value = value }
+    fun setCrossfadeSeconds(value: Int) { val v = value.coerceIn(0, 12); prefs.edit().putInt(KEY_CROSSFADE, v).apply(); _crossfade.value = v }
     fun setPitchSemitones(value: Int) { val v = value.coerceIn(-6, 6); prefs.edit().putInt(KEY_PITCH, v).apply(); _pitch.value = v }
     fun setBackgroundDim(value: Float) { val v = value.coerceIn(0.1f, 0.85f); prefs.edit().putFloat(KEY_BG_DIM, v).apply(); _bgDim.value = v }
 
@@ -95,7 +105,11 @@ class AppSettings(context: Context) {
     fun setAccent(value: Int) { prefs.edit().putInt(KEY_ACCENT, value).apply(); _accent.value = value }
     fun setAlbumColors(value: Boolean) { prefs.edit().putBoolean(KEY_ALBUM_COLORS, value).apply(); _albumColors.value = value }
     fun setVisualizer(value: Boolean) { prefs.edit().putBoolean(KEY_VISUALIZER, value).apply(); _visualizer.value = value }
-    fun setSpeed(value: Float) { prefs.edit().putFloat(KEY_SPEED, value).apply(); _speed.value = value }
+    fun setSpeed(value: Float) {
+        // Whole 0.05 steps keep the label tidy and avoid float noise.
+        val v = (Math.round(value.coerceIn(0.5f, 2f) * 20) / 20f)
+        prefs.edit().putFloat(KEY_SPEED, v).apply(); _speed.value = v
+    }
     fun setSkipSilence(value: Boolean) { prefs.edit().putBoolean(KEY_SKIP_SILENCE, value).apply(); _skipSilence.value = value }
 
     private companion object {
@@ -113,5 +127,7 @@ class AppSettings(context: Context) {
         const val KEY_SORT_DESC = "sort_desc"
         const val KEY_PITCH = "pitch"
         const val KEY_BG_DIM = "bg_dim"
+        const val KEY_SEEK_STYLE = "seek_style"
+        const val KEY_CROSSFADE = "crossfade"
     }
 }

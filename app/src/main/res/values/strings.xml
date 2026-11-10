@@ -239,4 +239,25 @@
 • Write or import lyrics
 • Edit title, artist and album
 • Rounded menus and a floating mini player</string>
+    <string name="settings_seek_style">Seek bar style</string>
+    <string name="seek_classic">Classic</string>
+    <string name="seek_wavy">Wavy</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_crossfade">Fade between songs</string>
+    <string name="settings_crossfade_hint">The song fades out at the end and the next one fades in. 0 keeps playback gapless.</string>
+    <string name="crossfade_off">Off (gapless)</string>
+    <string name="seconds_short">%1$d s</string>
+    <string name="selected_count">Selected: %1$d</string>
+    <string name="select_all">Select all</string>
+    <string name="select_clear">Clear selection</string>
+    <string name="select_to_playlist">To playlist</string>
+    <string name="select_to_queue">To queue</string>
+    <string name="select_added">Added: %1$d</string>
+    <string name="about_changelog_122_title">Version 1.2.2</string>
+    <string name="about_changelog_122">• Select several songs with a long press and add them to a playlist or the queue at once
+• Playback speed is now a slider (0.5×–2×)
+• Wavy seek bar as an option, and the bar moves smoothly
+• Fade between songs (or gapless with 0)
+• Smoother animations in lists
+</string>
 </resources>
