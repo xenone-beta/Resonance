@@ -142,7 +142,7 @@
 • Playlists, a queue with drag and drop, favorites and smart lists
 • Selecting several songs at once
 • Equalizer with presets, bass boost and virtualizer
-• Spectrum ring or a spinning vinyl record around the cover
+• Visualizer as a ring, bars or a wave, or a spinning vinyl record
 • Colors taken from the album cover
 • Synchronized lyrics from .lrc files
 • Sleep timer, speed and pitch, skip silence, fade between songs
@@ -259,5 +259,16 @@
 • Playback speed slider
 • Wavy seek bar option and smoother seeking
 • Fade between songs
+• Two new visualizer styles: bars and wave
+• Artist photos: from the gallery or an album cover
+• Albums as a two-column grid with large covers and a menu
 • Smoother list animations</string>
+    <string name="settings_visualizer_style">Visualizer style</string>
+    <string name="vis_ring">Ring</string>
+    <string name="vis_bars">Bars</string>
+    <string name="vis_wave">Wave</string>
+    <string name="artist_photo_change">Change photo</string>
+    <string name="artist_photo_from_album">Use an album cover</string>
+    <string name="artist_photo_remove">Remove photo</string>
+    <string name="artist_photo_pick_album">Choose an album</string>
 </resources>

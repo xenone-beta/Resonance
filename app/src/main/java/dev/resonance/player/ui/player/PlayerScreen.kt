@@ -118,6 +118,7 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
     val cover by vm.cover.collectAsState()
     val albumColors by vm.settings.albumColors.collectAsState()
     val ringOn by vm.settings.visualizer.collectAsState()
+    val visStyle by vm.settings.visualizerStyle.collectAsState()
     val favorites by vm.favoriteIds.collectAsState()
     val sleep by vm.sleepTimer.state.collectAsState()
     val vinyl by vm.settings.vinylMode.collectAsState()
@@ -206,6 +207,7 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                     cover = cover,
                     isPlaying = state.isPlaying,
                     ringOn = ringOn,
+                    style = visStyle,
                     vinyl = vinyl,
                     onToggleRing = { vm.settings.setVisualizer(!ringOn) },
                     onCollapse = onBack,
@@ -287,6 +289,7 @@ private fun CoverStage(
     cover: Bitmap?,
     isPlaying: Boolean,
     ringOn: Boolean,
+    style: Int,
     vinyl: Boolean,
     onToggleRing: () -> Unit,
     onCollapse: () -> Unit,
@@ -297,8 +300,8 @@ private fun CoverStage(
     var hint by remember { mutableIntStateOf(0) }
     var hintTick by remember { mutableIntStateOf(0) }
 
-    val fraction by animateFloatAsState(if (ringOn) 0.66f else 1f, tween(450), label = "coverFraction")
-    val corner by animateIntAsState(if (ringOn || vinyl) 50 else 12, tween(450), label = "coverCorner")
+    val fraction by animateFloatAsState(if (!ringOn) 1f else if (style == 0) 0.66f else 0.76f, tween(450), label = "coverFraction")
+    val corner by animateIntAsState(if ((ringOn && style == 0) || vinyl) 50 else 12, tween(450), label = "coverCorner")
     val pauseScale by animateFloatAsState(if (isPlaying) 1f else 0.94f, tween(300), label = "pauseScale")
     val ringAlpha by animateFloatAsState(if (ringOn) 1f else 0f, tween(350), label = "ringAlpha")
 
@@ -388,28 +391,34 @@ private fun CoverStage(
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val tick = frame // reading it makes the ring redraw every frame
+            val tick = frame // reading it makes the visualizer redraw every frame
             if (tick < 0 || ringAlpha <= 0.01f) return@Canvas
-            val bars = SpectrumBus.BANDS * 2
-            val outer = size.minDimension / 2f
-            val inner = outer * 0.66f * pauseScale + outer * 0.05f
-            val stroke = (2f * Math.PI.toFloat() * inner / bars) * 0.55f
-            val center = Offset(size.width / 2f, size.height / 2f)
-            for (bar in 0 until bars) {
-                // Mirrored left and right, bass at the bottom.
-                val band = if (bar < SpectrumBus.BANDS) bar else bars - 1 - bar
-                val level = levels[band].coerceIn(0f, 1f)
-                val angle = Math.toRadians(90.0 + (bar + 0.5) * 360.0 / bars)
-                val dx = cos(angle).toFloat()
-                val dy = sin(angle).toFloat()
-                val length = outer * (0.03f + 0.28f * level)
-                drawLine(
-                    color = lerp(primary, tertiary, level).copy(alpha = (0.35f + 0.65f * level) * ringAlpha),
-                    start = Offset(center.x + dx * inner, center.y + dy * inner),
-                    end = Offset(center.x + dx * (inner + length), center.y + dy * (inner + length)),
-                    strokeWidth = stroke,
-                    cap = StrokeCap.Round,
-                )
+            when (style) {
+                1 -> drawBars(levels, primary, tertiary, ringAlpha)
+                2 -> drawWave(levels, primary, tertiary, ringAlpha)
+                else -> {
+                    val bars = SpectrumBus.BANDS * 2
+                    val outer = size.minDimension / 2f
+                    val inner = outer * 0.66f * pauseScale + outer * 0.05f
+                    val stroke = (2f * Math.PI.toFloat() * inner / bars) * 0.55f
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    for (bar in 0 until bars) {
+                        // Mirrored left and right, bass at the bottom.
+                        val band = if (bar < SpectrumBus.BANDS) bar else bars - 1 - bar
+                        val level = levels[band].coerceIn(0f, 1f)
+                        val angle = Math.toRadians(90.0 + (bar + 0.5) * 360.0 / bars)
+                        val dx = cos(angle).toFloat()
+                        val dy = sin(angle).toFloat()
+                        val length = outer * (0.03f + 0.28f * level)
+                        drawLine(
+                            color = lerp(primary, tertiary, level).copy(alpha = (0.35f + 0.65f * level) * ringAlpha),
+                            start = Offset(center.x + dx * inner, center.y + dy * inner),
+                            end = Offset(center.x + dx * (inner + length), center.y + dy * (inner + length)),
+                            strokeWidth = stroke,
+                            cap = StrokeCap.Round,
+                        )
+                    }
+                }
             }
         }
 
@@ -417,6 +426,7 @@ private fun CoverStage(
         val travel = max(abs(dragX), dragY)
         Box(
             modifier = Modifier
+                .align(if (ringOn && style != 0) Alignment.TopCenter else Alignment.Center)
                 .fillMaxSize(fraction)
                 .graphicsLayer {
                     translationX = if (swipingSideways) dragX * 0.5f else 0f
@@ -789,4 +799,74 @@ private fun QuickButton(label: String, active: Boolean, onClick: () -> Unit, ico
             modifier = Modifier.padding(top = 4.dp),
         )
     }
+}
+
+/** Bars along the bottom of the stage, bass on the left, treble on the right, mirrored around the middle. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBars(
+    levels: FloatArray,
+    primary: androidx.compose.ui.graphics.Color,
+    tertiary: androidx.compose.ui.graphics.Color,
+    alpha: Float,
+) {
+    val count = SpectrumBus.BANDS * 2
+    val gap = size.width * 0.006f
+    val barWidth = (size.width - gap * (count - 1)) / count
+    val baseline = size.height - 2.dp.toPx()
+    val maxHeight = size.height * 0.2f
+    for (i in 0 until count) {
+        // Bass in the middle, treble toward both edges.
+        val band = if (i < SpectrumBus.BANDS) SpectrumBus.BANDS - 1 - i else i - SpectrumBus.BANDS
+        val level = levels[band].coerceIn(0f, 1f)
+        val height = barWidth + (maxHeight - barWidth) * level
+        drawRoundRect(
+            color = lerp(primary, tertiary, level).copy(alpha = (0.4f + 0.6f * level) * alpha),
+            topLeft = Offset(i * (barWidth + gap), baseline - height),
+            size = androidx.compose.ui.geometry.Size(barWidth, height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2f),
+        )
+    }
+}
+
+/** A smooth mirrored wave under the cover that swells with the music. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWave(
+    levels: FloatArray,
+    primary: androidx.compose.ui.graphics.Color,
+    tertiary: androidx.compose.ui.graphics.Color,
+    alpha: Float,
+) {
+    val count = SpectrumBus.BANDS * 2
+    val centerY = size.height - size.height * 0.1f
+    val maxAmp = size.height * 0.09f
+    val step = size.width / (count - 1)
+    fun amp(i: Int): Float {
+        val band = if (i < SpectrumBus.BANDS) SpectrumBus.BANDS - 1 - i else i - SpectrumBus.BANDS
+        return (0.04f + 0.96f * levels[band].coerceIn(0f, 1f)) * maxAmp
+    }
+    val top = androidx.compose.ui.graphics.Path()
+    val bottom = androidx.compose.ui.graphics.Path()
+    top.moveTo(0f, centerY - amp(0))
+    bottom.moveTo(0f, centerY + amp(0))
+    for (i in 1 until count) {
+        val x = i * step
+        val midX = x - step / 2f
+        val prev = amp(i - 1)
+        val cur = amp(i)
+        top.cubicTo(midX, centerY - prev, midX, centerY - cur, x, centerY - cur)
+        bottom.cubicTo(midX, centerY + prev, midX, centerY + cur, x, centerY + cur)
+    }
+    val fill = androidx.compose.ui.graphics.Path().apply {
+        addPath(top)
+        // Walk back along the lower edge to close the shape.
+        lineTo(size.width, centerY + amp(count - 1))
+        for (i in count - 2 downTo 0) {
+            val x = i * step
+            lineTo(x, centerY + amp(i))
+        }
+        close()
+    }
+    val brush = androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(primary, tertiary, primary))
+    drawPath(fill, brush, alpha = 0.28f * alpha)
+    val edge = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
+    drawPath(top, brush, alpha = alpha, style = edge)
+    drawPath(bottom, brush, alpha = alpha, style = edge)
 }

@@ -191,12 +191,16 @@ fun ResonanceApp(vm: MainViewModel) {
         ) { entry ->
             val name = entry.arguments?.getString("name").orEmpty()
             val artist = remember(library, name) { library.artists.firstOrNull { it.name == name } }
+            val artistEditor = dev.resonance.player.ui.library.rememberArtistPhotoEditor(vm)
             TrackListScreen(
                 title = name.ifEmpty { stringResourceUnknownArtist() },
                 tracks = artist?.tracks.orEmpty(),
                 vm = vm,
                 onBack = back,
                 onOpenPlayer = openPlayer,
+                header = if (artist != null) {
+                    { dev.resonance.player.ui.library.ArtistHeader(vm, artist, artistEditor) }
+                } else null,
             )
         }
         composable(

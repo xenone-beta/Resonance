@@ -230,6 +230,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeCover(trackId: Long) = files.removeCover(trackId)
 
+    fun setArtistPhoto(name: String, uri: android.net.Uri, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { onResult(files.saveArtistPhoto(name, uri)) }
+    }
+
+    /** Uses the cover of [track] (one of the artist's songs) as the artist photo. */
+    fun setArtistPhotoFromCover(name: String, track: Track, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val cover = artwork.load(track, 512)
+            onResult(cover != null && files.saveArtistPhoto(name, cover))
+        }
+    }
+
+    fun removeArtistPhoto(name: String) = files.removeArtistPhoto(name)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val background: StateFlow<Bitmap?> = files.backgroundVersion
         .mapLatest { files.loadBackground() }

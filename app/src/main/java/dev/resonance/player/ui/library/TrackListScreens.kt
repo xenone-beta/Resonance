@@ -65,6 +65,7 @@ fun TrackListScreen(
     vm: MainViewModel,
     onBack: () -> Unit,
     onOpenPlayer: () -> Unit,
+    header: (@Composable () -> Unit)? = null,
 ) {
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
@@ -78,6 +79,7 @@ fun TrackListScreen(
             Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
             contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
         ) {
+            if (header != null) item(key = "custom-header") { header() }
             item(key = "header") { PlayButtons(tracks, vm) }
             itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
                 TrackRow(

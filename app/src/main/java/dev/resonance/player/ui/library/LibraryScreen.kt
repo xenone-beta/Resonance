@@ -104,6 +104,7 @@ fun LibraryScreen(
     val playerState by vm.player.state.collectAsState()
     val actions = rememberTrackActions(vm)
     val selection = rememberTrackSelection()
+    val artistEditor = rememberArtistPhotoEditor(vm)
 
     val tabs = listOf(
         R.string.tab_songs, R.string.tab_albums, R.string.tab_artists, R.string.tab_playlists, R.string.tab_folders,
@@ -193,15 +194,13 @@ fun LibraryScreen(
                 tab == 1 -> if (albums.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
-                    LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
-                        items(albums, key = { it.id }) { album -> AlbumRow(album, vm) { onOpenAlbum(album.id) } }
-                    }
+                    AlbumGrid(albums, vm, listPad, onOpenAlbum)
                 }
                 tab == 2 -> if (artists.isEmpty()) {
                     EmptyState(stringResource(if (query.isBlank()) R.string.empty_library else R.string.empty_search))
                 } else {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = listPad) {
-                        items(artists, key = { it.name }) { artist -> ArtistRow(artist) { onOpenArtist(artist.name) } }
+                        items(artists, key = { it.name }) { artist -> ArtistRow(vm, artist, artistEditor) { onOpenArtist(artist.name) } }
                     }
                 }
                 tab == 3 -> PlaylistsTab(vm, onOpenPlaylist, onOpenFavorites, onOpenSmart, listPad)
@@ -299,31 +298,6 @@ private fun ShuffleHeader(
 }
 
 @Composable
-private fun AlbumRow(album: Album, vm: MainViewModel, onClick: () -> Unit) {
-    val first = album.tracks.first()
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-        leadingContent = { Cover(vm.artwork, first.id, album.id, 56.dp, corner = 14.dp) },
-        headlineContent = {
-            Text(
-                album.title.ifEmpty { stringResource(R.string.unknown_album) },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = {
-            val count = pluralStringResource(R.plurals.songs_count, album.tracks.size, album.tracks.size)
-            Text(
-                if (album.artist.isEmpty()) count else "${album.artist} · $count",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
-}
-
-@Composable
 private fun FolderRow(folder: Folder, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -341,34 +315,6 @@ private fun FolderRow(folder: Folder, onClick: () -> Unit) {
                     folder.path.removePrefix("/storage/emulated/0/"),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
-}
-
-@Composable
-private fun ArtistRow(artist: Artist, onClick: () -> Unit) {
-    val name = artist.name.ifEmpty { stringResource(R.string.unknown_artist) }
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-        leadingContent = {
-            Box(
-                Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    name.first().uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-            }
-        },
-        headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = {
-            Text(
-                pluralStringResource(R.plurals.albums_count, artist.albumCount, artist.albumCount) + " · " +
-                    pluralStringResource(R.plurals.songs_count, artist.tracks.size, artist.tracks.size),
             )
         },
     )

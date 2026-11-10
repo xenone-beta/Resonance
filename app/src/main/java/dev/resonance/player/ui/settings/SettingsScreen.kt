@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
+import dev.resonance.player.ui.player.VisualizerStyleChips
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -153,6 +154,9 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                 checked = albumColors,
                 onChange = settings::setAlbumColors,
             )
+
+            Label(stringResource(R.string.settings_visualizer_style))
+            VisualizerStyleChips(vm, Modifier.padding(horizontal = 16.dp))
 
             Label(stringResource(R.string.settings_seek_style))
             FlowRow(

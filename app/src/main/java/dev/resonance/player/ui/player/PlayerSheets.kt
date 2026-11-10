@@ -141,6 +141,7 @@ fun MoreSheetContent(vm: MainViewModel) {
         ToggleRow(stringResource(R.string.settings_visualizer), stringResource(R.string.settings_visualizer_hint), visualizer) {
             vm.settings.setVisualizer(it)
         }
+        if (visualizer) VisualizerStyleChips(vm, Modifier.padding(horizontal = 24.dp, vertical = 4.dp))
         ToggleRow(stringResource(R.string.settings_headphones), stringResource(R.string.settings_headphones_hint), headphones) {
             vm.settings.setHeadphonesAutoplay(it)
         }
@@ -228,5 +229,17 @@ private fun Message(text: String, buttonLabel: String, onClick: () -> Unit, onWr
         )
         Button(onClick = onClick) { Text(buttonLabel) }
         OutlinedButton(onClick = onWrite) { Text(stringResource(R.string.lyrics_write)) }
+    }
+}
+
+/** Ring, bars or wave. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun VisualizerStyleChips(vm: MainViewModel, modifier: Modifier = Modifier) {
+    val style by vm.settings.visualizerStyle.collectAsState()
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(R.string.vis_ring, R.string.vis_bars, R.string.vis_wave).forEachIndexed { index, label ->
+            FilterChip(selected = style == index, onClick = { vm.settings.setVisualizerStyle(index) }, label = { Text(stringResource(label)) })
+        }
     }
 }

@@ -70,6 +70,10 @@ class AppSettings(context: Context) {
     private val _sortDesc = MutableStateFlow(prefs.getBoolean(KEY_SORT_DESC, false))
     val sortDescending: StateFlow<Boolean> = _sortDesc.asStateFlow()
 
+    /** 0 = ring around the cover, 1 = bars under it, 2 = wave under it. */
+    private val _visualizerStyle = MutableStateFlow(prefs.getInt(KEY_VIS_STYLE, 0).coerceIn(0, 2))
+    val visualizerStyle: StateFlow<Int> = _visualizerStyle.asStateFlow()
+
     /** 0 = the classic slider, 1 = wavy line. */
     private val _seekStyle = MutableStateFlow(prefs.getInt(KEY_SEEK_STYLE, 0))
     val seekStyle: StateFlow<Int> = _seekStyle.asStateFlow()
@@ -91,6 +95,7 @@ class AppSettings(context: Context) {
         _sortKey.value = key
         _sortDesc.value = descending
     }
+    fun setVisualizerStyle(value: Int) { val v = value.coerceIn(0, 2); prefs.edit().putInt(KEY_VIS_STYLE, v).apply(); _visualizerStyle.value = v }
     fun setSeekStyle(value: Int) { prefs.edit().putInt(KEY_SEEK_STYLE, value).apply(); _seekStyle.value = value }
     fun setCrossfadeSeconds(value: Int) { val v = value.coerceIn(0, 12); prefs.edit().putInt(KEY_CROSSFADE, v).apply(); _crossfade.value = v }
     fun setPitchSemitones(value: Int) { val v = value.coerceIn(-6, 6); prefs.edit().putInt(KEY_PITCH, v).apply(); _pitch.value = v }
@@ -127,6 +132,7 @@ class AppSettings(context: Context) {
         const val KEY_SORT_DESC = "sort_desc"
         const val KEY_PITCH = "pitch"
         const val KEY_BG_DIM = "bg_dim"
+        const val KEY_VIS_STYLE = "visualizer_style"
         const val KEY_SEEK_STYLE = "seek_style"
         const val KEY_CROSSFADE = "crossfade"
     }

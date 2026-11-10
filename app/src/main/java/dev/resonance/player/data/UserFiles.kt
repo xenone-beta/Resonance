@@ -68,6 +68,53 @@ class UserFiles(context: Context) {
         if (coverFile(trackId).delete()) _coverVersion.value++
     }
 
+    // ---- Artist photos ---------------------------------------------------------------------
+
+    private fun artistFile(name: String): File {
+        val hash = java.security.MessageDigest.getInstance("SHA-1").digest(name.toByteArray()).joinToString("") { "%02x".format(it) }
+        return File(File(root, "artists"), "$hash.jpg")
+    }
+
+    private val _artistVersion = MutableStateFlow(0)
+    /** Bumped whenever an artist photo changes, so avatars on screen reload. */
+    val artistVersion: StateFlow<Int> = _artistVersion.asStateFlow()
+
+    fun hasArtistPhoto(name: String): Boolean = artistFile(name).isFile
+
+    suspend fun saveArtistPhoto(name: String, uri: Uri): Boolean {
+        val ok = saveImage(uri, artistFile(name), maxSide = 512, square = true)
+        if (ok) _artistVersion.value++
+        return ok
+    }
+
+    /** Uses an already loaded picture, for example the cover of one of the artist's albums. */
+    suspend fun saveArtistPhoto(name: String, bitmap: Bitmap): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val side = minOf(bitmap.width, bitmap.height)
+            var square = Bitmap.createBitmap(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side)
+            if (side > 512) square = Bitmap.createScaledBitmap(square, 512, 512, true)
+            val out = artistFile(name)
+            out.parentFile?.mkdirs()
+            FileOutputStream(out).use { square.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+            _artistVersion.value++
+            true
+        }.getOrDefault(false)
+    }
+
+    fun removeArtistPhoto(name: String) {
+        if (artistFile(name).delete()) _artistVersion.value++
+    }
+
+    private val artistCache = android.util.LruCache<String, Bitmap>(40)
+
+    suspend fun loadArtistPhoto(name: String): Bitmap? = withContext(Dispatchers.IO) {
+        val file = artistFile(name)
+        if (!file.isFile) return@withContext null
+        val key = name + file.lastModified()
+        artistCache.get(key)?.let { return@withContext it }
+        runCatching { BitmapFactory.decodeFile(file.path) }.getOrNull()?.also { artistCache.put(key, it) }
+    }
+
     // ---- Lyrics ----------------------------------------------------------------------------
 
     fun ownLyrics(trackId: Long): String? =
