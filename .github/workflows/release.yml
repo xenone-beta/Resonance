@@ -41,6 +41,29 @@ jobs:
             echo "No KEYSTORE_BASE64 secret - APK will be signed with the debug key."
           fi
 
+      - name: Check release keystore
+        if: ${{ env.RESONANCE_KEYSTORE_FILE != '' }}
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          f="$RUNNER_TEMP/release.jks"
+          echo "Keystore size: $(stat -c %s "$f") bytes, sha256: $(sha256sum "$f" | cut -d' ' -f1)"
+          if ! keytool -list -keystore "$f" -storepass "$KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "::error::KEYSTORE_PASSWORD does not open the keystore (or KEYSTORE_BASE64 was damaged when pasted). Compare the sha256 above with 'sha256sum release.jks' in Termux."
+            exit 1
+          fi
+          if ! keytool -list -keystore "$f" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Alias in KEY_ALIAS was not found in the keystore. It must be exactly what you used after -alias."
+            exit 1
+          fi
+          if [ "$KEY_PASSWORD" != "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::KEY_PASSWORD differs from KEYSTORE_PASSWORD. Keystores made by recent Java versions need them to be identical."
+            exit 1
+          fi
+          echo "Keystore, alias and passwords are consistent."
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 
