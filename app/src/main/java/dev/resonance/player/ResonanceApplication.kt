@@ -15,6 +15,10 @@ import dev.resonance.player.playback.SleepTimer
  * so they share these objects directly.
  */
 class ResonanceApplication : Application() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(dev.resonance.player.data.Locales.wrap(base))
+    }
+
     val database: ResonanceDatabase by lazy { ResonanceDatabase.create(this) }
     val library: LibraryRepository by lazy { LibraryRepository(this) }
     val stats: StatsRepository by lazy { StatsRepository(database.statsDao(), database.dailyDao()) }

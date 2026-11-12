@@ -3,6 +3,13 @@
 A local-files music player for Android, designed with Material 3 / Material You.
 No accounts, no ads, no internet permission: it plays the music that is already on your phone.
 
+
+## Preview (1.2.5)
+
+![Resonance 1.2.5: gradient player with covers as a strip, own color picker, language settings](docs/preview-1.2.5.png)
+
+*These are design previews of the 1.2.5 screens, not device screenshots.*
+
 ## Features
 
 - **Library**: songs, albums and artists from the device (MediaStore), updated automatically
@@ -12,10 +19,11 @@ No accounts, no ads, no internet permission: it plays the music that is already 
 - **Statistics**: plays, listening time, top songs and artists, recently played (stored only on the device)
 - **Album colors**: the full-screen player and mini player take their colors from the current cover
 - **Visualizer**: live spectrum ring around the cover, measured from the player's own audio (no microphone permission)
-- **Gestures on the cover**: swipe for next/previous, swipe down to close, double-tap the sides for ±10 s, tap to toggle the ring
+- **Gestures on the cover**: drag sideways and the next or previous cover slides in as a strip, drag down to close, double-tap the sides for ±10 s, tap to toggle the ring
 - **Favorites**, **folders**, **sleep timer**, playback speed, skip silence
-- **Settings**: light/dark/AMOLED theme, wallpaper or accent colors
+- **Settings**: light/dark/AMOLED theme, wallpaper colors, ready-made or your own accent color (palette or HEX), gradient player background, app language (System / English / Русский)
 - **Lyrics** from .lrc files in a folder you choose, **vinyl record mode**, drag-and-drop queue, smart lists, daily chart and streaks in statistics
+- **1.2.5**: smooth play/pause morph, cover swipes as a strip, gradient player background, custom accent color (palette + HEX), language switch
 - **1.2.2**: multi-select songs, speed slider, wavy seek bar, fade between songs, visualizer styles, artist photos, album grid
 - **1.2.1**: song sorting, background photo, go to artist/album, pitch, custom covers, own lyrics, edit title/artist/album (stored in the app only)
 - **Home screen widget** with cover and playback buttons

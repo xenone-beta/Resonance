@@ -271,4 +271,18 @@
     <string name="artist_photo_from_album">Use an album cover</string>
     <string name="artist_photo_remove">Remove photo</string>
     <string name="artist_photo_pick_album">Choose an album</string>
+    <string name="color_picker_title">Custom color</string>
+    <string name="color_picker_hex">HEX color</string>
+    <string name="color_picker_apply">Apply</string>
+    <string name="settings_player_gradient">Gradient in the player</string>
+    <string name="settings_player_gradient_hint">A soft gradient from the cover colors behind the player</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="about_changelog_125_title">Version 1.2.5</string>
+    <string name="about_changelog_125">• Smooth play and pause button that morphs between its two states
+• Cover gestures follow your finger: swipe sideways and the next or previous cover slides in like a strip
+• Swipe down to close the player with a smooth animation
+• Gradient background in the player from the cover colors
+• Your own accent color: pick it on a palette or type a HEX code
+• Choose the app language: System, English or Russian</string>
 </resources>

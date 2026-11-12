@@ -3,6 +3,7 @@ package dev.resonance.player.playback
 import android.content.ComponentName
 import android.content.Context
 import androidx.media3.common.MediaItem
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -25,6 +26,9 @@ data class PlayerState(
     val shuffle: Boolean = false,
     /** One of Player.REPEAT_MODE_OFF / ONE / ALL. */
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    /** Queue indexes the player would jump to (honours shuffle and repeat), or -1. */
+    val nextIndex: Int = -1,
+    val previousIndex: Int = -1,
 ) {
     val current: QueueEntry? get() = queue.getOrNull(currentIndex)
 }
@@ -189,6 +193,8 @@ class PlayerConnection(context: Context) {
             isPlaying = c.isPlaying,
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
+            nextIndex = if (c.mediaItemCount == 0) -1 else c.nextMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: -1,
+            previousIndex = if (c.mediaItemCount == 0) -1 else c.previousMediaItemIndex.takeIf { it != C.INDEX_UNSET } ?: -1,
         )
     }
 

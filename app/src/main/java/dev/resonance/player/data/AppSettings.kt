@@ -90,6 +90,17 @@ class AppSettings(context: Context) {
     private val _bgDim = MutableStateFlow(prefs.getFloat(KEY_BG_DIM, 0.5f))
     val backgroundDim: StateFlow<Float> = _bgDim.asStateFlow()
 
+    /** Gradient from the cover colors behind the full-screen player. */
+    private val _playerGradient = MutableStateFlow(prefs.getBoolean(KEY_GRADIENT, true))
+    val playerGradient: StateFlow<Boolean> = _playerGradient.asStateFlow()
+
+    /** App language: "" follows the system, otherwise a language tag such as "en" or "ru". */
+    private val _language = MutableStateFlow(prefs.getString(KEY_LANGUAGE, "") ?: "")
+    val language: StateFlow<String> = _language.asStateFlow()
+
+    fun setPlayerGradient(value: Boolean) { prefs.edit().putBoolean(KEY_GRADIENT, value).apply(); _playerGradient.value = value }
+    fun setLanguage(value: String) { prefs.edit().putString(KEY_LANGUAGE, value).apply(); _language.value = value }
+
     fun setSort(key: SortKey, descending: Boolean) {
         prefs.edit().putInt(KEY_SORT, key.ordinal).putBoolean(KEY_SORT_DESC, descending).apply()
         _sortKey.value = key
@@ -135,5 +146,7 @@ class AppSettings(context: Context) {
         const val KEY_VIS_STYLE = "visualizer_style"
         const val KEY_SEEK_STYLE = "seek_style"
         const val KEY_CROSSFADE = "crossfade"
+        const val KEY_GRADIENT = "player_gradient"
+        const val KEY_LANGUAGE = "language"
     }
 }

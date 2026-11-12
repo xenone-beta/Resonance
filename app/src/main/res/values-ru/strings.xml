@@ -279,4 +279,18 @@
     <string name="artist_photo_from_album">Взять обложку альбома</string>
     <string name="artist_photo_remove">Убрать фото</string>
     <string name="artist_photo_pick_album">Выберите альбом</string>
+    <string name="color_picker_title">Свой цвет</string>
+    <string name="color_picker_hex">HEX-цвет</string>
+    <string name="color_picker_apply">Применить</string>
+    <string name="settings_player_gradient">Градиент в плеере</string>
+    <string name="settings_player_gradient_hint">Мягкий градиент из цветов обложки на фоне плеера</string>
+    <string name="settings_language">Язык</string>
+    <string name="language_system">Системный</string>
+    <string name="about_changelog_125_title">Версия 1.2.5</string>
+    <string name="about_changelog_125">• Плавная кнопка «играть/пауза»: значок и форма перетекают друг в друга
+• Жесты обложки следуют за пальцем: тянете вправо или влево, и следующая или предыдущая обложка выезжает лентой
+• Свайп вниз закрывает плеер плавной анимацией
+• Градиентный фон плеера из цветов обложки
+• Свой цвет приложения: палитра или HEX-код
+• Выбор языка приложения: системный, English или Русский</string>
 </resources>

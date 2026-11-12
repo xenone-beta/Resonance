@@ -374,7 +374,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         player.disconnect()
     }
 
-    private companion object {
+    companion object {
         const val COVER_SIZE = 768
         const val SMART_LIMIT = 100
     }

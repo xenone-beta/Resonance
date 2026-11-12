@@ -17,8 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -67,12 +72,7 @@ fun MiniPlayer(vm: MainViewModel, onOpen: () -> Unit, modifier: Modifier = Modif
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    IconButton(onClick = { vm.player.togglePlay() }) {
-                        Icon(
-                            if (state.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(if (state.isPlaying) R.string.pause else R.string.play),
-                        )
-                    }
+                    MiniPlayPause(isPlaying = state.isPlaying, onClick = { vm.player.togglePlay() })
                     IconButton(onClick = { vm.player.next() }) {
                         Icon(Icons.Rounded.SkipNext, contentDescription = stringResource(R.string.next))
                     }
@@ -96,4 +96,39 @@ private fun MiniProgress(vm: MainViewModel, durationMs: Long) {
         color = MaterialTheme.colorScheme.primary,
         trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f),
     )
+}
+
+/** Small play/pause toggle for the mini player: the two icons cross-fade and turn on a spring. */
+@Composable
+private fun MiniPlayPause(isPlaying: Boolean, onClick: () -> Unit) {
+    val progress by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+        label = "miniPlayPause",
+    )
+    val p = progress.coerceIn(0f, 1f)
+    IconButton(onClick = onClick) {
+        Box {
+            Icon(
+                Icons.Rounded.PlayArrow,
+                contentDescription = stringResource(R.string.play),
+                modifier = Modifier.graphicsLayer {
+                    alpha = 1f - p
+                    rotationZ = -90f * progress
+                    scaleX = 1f - 0.5f * p
+                    scaleY = 1f - 0.5f * p
+                },
+            )
+            Icon(
+                Icons.Rounded.Pause,
+                contentDescription = stringResource(R.string.pause),
+                modifier = Modifier.graphicsLayer {
+                    alpha = p
+                    rotationZ = 90f * (1f - progress)
+                    scaleX = 0.5f + 0.5f * p
+                    scaleY = 0.5f + 0.5f * p
+                },
+            )
+        }
+    }
 }

@@ -85,6 +85,15 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.onSizeChanged
+import dev.resonance.player.playback.QueueEntry
+import kotlinx.coroutines.Job
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -115,8 +124,8 @@ import dev.resonance.player.ui.common.LocalNavigator
 fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit, onOpenEqualizer: () -> Unit) {
     val state by vm.player.state.collectAsState()
     val seed by vm.seed.collectAsState()
-    val cover by vm.cover.collectAsState()
     val albumColors by vm.settings.albumColors.collectAsState()
+    val gradient by vm.settings.playerGradient.collectAsState()
     val ringOn by vm.settings.visualizer.collectAsState()
     val visStyle by vm.settings.visualizerStyle.collectAsState()
     val favorites by vm.favoriteIds.collectAsState()
@@ -142,6 +151,22 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
             // Over a background photo the cover colors tint it instead of hiding it.
             color = if (LocalHasBackground.current) MaterialTheme.colorScheme.surface.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surface,
         ) {
+            if (gradient) {
+                // Cover colors fade from the top into the plain surface and follow the cover change.
+                val cs = MaterialTheme.colorScheme
+                val strength = if (LocalHasBackground.current) 0.55f else 1f
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to cs.primaryContainer.copy(alpha = 0.95f * strength),
+                                0.45f to cs.secondaryContainer.copy(alpha = 0.45f * strength),
+                                1f to Color.Transparent,
+                            ),
+                        ),
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -204,7 +229,9 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
                 CoverStage(
                     vm = vm,
                     durationMs = entry.durationMs,
-                    cover = cover,
+                    previous = state.queue.getOrNull(state.previousIndex),
+                    current = entry,
+                    next = state.queue.getOrNull(state.nextIndex),
                     isPlaying = state.isPlaying,
                     ringOn = ringOn,
                     style = visStyle,
@@ -279,14 +306,18 @@ fun PlayerScreen(vm: MainViewModel, onBack: () -> Unit, onOpenQueue: () -> Unit,
 }
 
 /**
- * The cover with the spectrum ring around it. Gestures: swipe sideways for the next or previous
- * song, swipe down to close, double-tap the left or right side to skip 10 seconds, tap to toggle the ring.
+ * The cover with the spectrum ring. The covers sit on a strip: drag sideways and the neighbouring
+ * cover slides in under your finger; let go past a third of the way (or flick) and the player
+ * changes song, otherwise the strip springs back. Drag down to close. Double-tap the left or
+ * right side to skip 10 seconds, tap to toggle the ring.
  */
 @Composable
 private fun CoverStage(
     vm: MainViewModel,
     durationMs: Long,
-    cover: Bitmap?,
+    previous: QueueEntry?,
+    current: QueueEntry,
+    next: QueueEntry?,
     isPlaying: Boolean,
     ringOn: Boolean,
     style: Int,
@@ -297,13 +328,40 @@ private fun CoverStage(
     val scope = rememberCoroutineScope()
     var dragX by remember { mutableFloatStateOf(0f) }
     var dragY by remember { mutableFloatStateOf(0f) }
+    var settle by remember { mutableStateOf<Job?>(null) }
     var hint by remember { mutableIntStateOf(0) }
     var hintTick by remember { mutableIntStateOf(0) }
+    var stageWidth by remember { mutableFloatStateOf(0f) }
+    val hasPrevious by rememberUpdatedState(previous != null)
+    val hasNext by rememberUpdatedState(next != null)
+    val currentId by rememberUpdatedState(current.trackId)
+    val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 16.dp.toPx() }
 
     val fraction by animateFloatAsState(if (!ringOn) 1f else if (style == 0) 0.66f else 0.76f, tween(450), label = "coverFraction")
     val corner by animateIntAsState(if ((ringOn && style == 0) || vinyl) 50 else 12, tween(450), label = "coverCorner")
     val pauseScale by animateFloatAsState(if (isPlaying) 1f else 0.94f, tween(300), label = "pauseScale")
     val ringAlpha by animateFloatAsState(if (ringOn) 1f else 0f, tween(350), label = "ringAlpha")
+    val pitch = (stageWidth * fraction + gap).coerceAtLeast(1f)
+
+    // Covers of the song before, the current one and the next, loaded ahead so a swipe never shows a blank.
+    val coverVersion by vm.artwork.version.collectAsState()
+    val covers = remember(coverVersion) { mutableStateMapOf<Long, Bitmap>() }
+    LaunchedEffect(previous?.trackId, current.trackId, next?.trackId, coverVersion) {
+        val wanted = listOfNotNull(current, next, previous)
+        for (entry in wanted) {
+            if (entry.trackId !in covers) {
+                vm.artwork.load(entry.trackId, entry.albumId, MainViewModel.COVER_SIZE)?.let { covers[entry.trackId] = it }
+            }
+        }
+        covers.keys.retainAll(wanted.map { it.trackId }.toSet())
+    }
+
+    // The song changed: the strip now rests on the new cover, so jump back to zero without animating.
+    LaunchedEffect(current.trackId) {
+        settle?.cancel()
+        dragX = 0f
+        dragY = 0f
+    }
 
     // The analysis runs only while the ring is visible.
     DisposableEffect(ringOn) {
@@ -326,6 +384,7 @@ private fun CoverStage(
         }
     }
     val vinylAngle = remember { mutableFloatStateOf(0f) }
+    val restingAngle = remember { mutableFloatStateOf(0f) }
     LaunchedEffect(vinyl, isPlaying) {
         if (!vinyl || !isPlaying) return@LaunchedEffect
         var last = withFrameNanos { it }
@@ -344,11 +403,13 @@ private fun CoverStage(
 
     val primary = MaterialTheme.colorScheme.primary
     val tertiary = MaterialTheme.colorScheme.tertiary
+    val springSpec = spring<Float>(dampingRatio = 0.78f, stiffness = 380f)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(1f)
+            .onSizeChanged { stageWidth = it.width.toFloat() }
             .pointerInput(durationMs) {
                 detectTapGestures(
                     onTap = { onToggleRing() },
@@ -366,26 +427,74 @@ private fun CoverStage(
                 )
             }
             .pointerInput(Unit) {
+                val tracker = VelocityTracker()
+                var axis = 0 // 0 = undecided, 1 = sideways, 2 = down
+                var rawX = 0f
+                var rawY = 0f
+
+                fun springTo(x: Float, y: Float, vx: Float = 0f, vy: Float = 0f, then: () -> Unit = {}) {
+                    settle?.cancel()
+                    settle = scope.launch {
+                        val a = launch { animate(dragX, x, vx, springSpec) { v, _ -> dragX = v } }
+                        val b = launch { animate(dragY, y, vy, springSpec) { v, _ -> dragY = v } }
+                        a.join(); b.join()
+                        then()
+                    }
+                }
+
                 detectDragGestures(
-                    onDragStart = { dragX = 0f; dragY = 0f },
+                    onDragStart = {
+                        settle?.cancel()
+                        tracker.resetTracking()
+                        axis = 0; rawX = 0f; rawY = 0f
+                    },
                     onDragEnd = {
-                        val width = size.width
-                        when {
-                            abs(dragX) > abs(dragY) && abs(dragX) > width * 0.22f ->
-                                if (dragX < 0) vm.player.next() else vm.player.previousTrack()
-                            dragY > abs(dragX) && dragY > width * 0.25f -> onCollapse()
+                        val v = tracker.calculateVelocity()
+                        when (axis) {
+                            1 -> {
+                                val direction = if (dragX < 0f) 1 else -1 // 1 = towards the next song
+                                val available = if (direction == 1) hasNext else hasPrevious
+                                val flick = abs(v.x) > 900f && (v.x < 0f) == (direction == 1)
+                                if (available && (abs(dragX) > pitch * 0.33f || flick)) {
+                                    val leaving = currentId
+                                    springTo(-direction * pitch, 0f, vx = v.x) {
+                                        if (direction == 1) vm.player.next() else vm.player.previousTrack()
+                                        // If the player did not move on, bring the strip back.
+                                        scope.launch {
+                                            delay(900)
+                                            if (currentId == leaving) springTo(0f, 0f)
+                                        }
+                                    }
+                                } else {
+                                    springTo(0f, 0f, vx = v.x)
+                                }
+                            }
+                            2 -> {
+                                if (dragY > size.height * 0.28f || v.y > 1300f) {
+                                    springTo(0f, size.height * 0.8f, vy = v.y) { onCollapse() }
+                                } else {
+                                    springTo(0f, 0f, vy = v.y)
+                                }
+                            }
+                            else -> springTo(0f, 0f)
                         }
-                        scope.launch { animate(dragX, 0f) { value, _ -> dragX = value } }
-                        scope.launch { animate(dragY, 0f) { value, _ -> dragY = value } }
                     },
-                    onDragCancel = {
-                        scope.launch { animate(dragX, 0f) { value, _ -> dragX = value } }
-                        scope.launch { animate(dragY, 0f) { value, _ -> dragY = value } }
-                    },
+                    onDragCancel = { springTo(0f, 0f) },
                 ) { change, amount ->
                     change.consume()
-                    dragX += amount.x
-                    dragY = (dragY + amount.y).coerceAtLeast(0f)
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    rawX += amount.x
+                    rawY += amount.y
+                    if (axis == 0 && abs(rawX) + abs(rawY) > 12f) axis = if (abs(rawX) >= abs(rawY)) 1 else 2
+                    when (axis) {
+                        1 -> {
+                            val moved = dragX + amount.x
+                            // Nothing in that direction: the strip resists like a rubber band.
+                            val blocked = (moved < 0f && !hasNext) || (moved > 0f && !hasPrevious)
+                            dragX = if (blocked) dragX + amount.x * 0.35f else moved
+                        }
+                        2 -> dragY = (dragY + amount.y).coerceAtLeast(0f)
+                    }
                 }
             },
         contentAlignment = Alignment.Center,
@@ -393,15 +502,17 @@ private fun CoverStage(
         Canvas(Modifier.fillMaxSize()) {
             val tick = frame // reading it makes the visualizer redraw every frame
             if (tick < 0 || ringAlpha <= 0.01f) return@Canvas
+            // The ring fades while a cover is being dragged away.
+            val rest = 1f - (abs(dragX) / pitch).coerceIn(0f, 1f)
             when (style) {
-                1 -> drawBars(levels, primary, tertiary, ringAlpha)
-                2 -> drawWave(levels, primary, tertiary, ringAlpha)
+                1 -> drawBars(levels, primary, tertiary, ringAlpha * rest)
+                2 -> drawWave(levels, primary, tertiary, ringAlpha * rest)
                 else -> {
                     val bars = SpectrumBus.BANDS * 2
                     val outer = size.minDimension / 2f
                     val inner = outer * 0.66f * pauseScale + outer * 0.05f
                     val stroke = (2f * Math.PI.toFloat() * inner / bars) * 0.55f
-                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val center = Offset(size.width / 2f + dragX * 0.15f, size.height / 2f)
                     for (bar in 0 until bars) {
                         // Mirrored left and right, bass at the bottom.
                         val band = if (bar < SpectrumBus.BANDS) bar else bars - 1 - bar
@@ -411,7 +522,7 @@ private fun CoverStage(
                         val dy = sin(angle).toFloat()
                         val length = outer * (0.03f + 0.28f * level)
                         drawLine(
-                            color = lerp(primary, tertiary, level).copy(alpha = (0.35f + 0.65f * level) * ringAlpha),
+                            color = lerp(primary, tertiary, level).copy(alpha = (0.35f + 0.65f * level) * ringAlpha * rest),
                             start = Offset(center.x + dx * inner, center.y + dy * inner),
                             end = Offset(center.x + dx * (inner + length), center.y + dy * (inner + length)),
                             strokeWidth = stroke,
@@ -422,48 +533,44 @@ private fun CoverStage(
             }
         }
 
-        val swipingSideways = abs(dragX) >= dragY
-        val travel = max(abs(dragX), dragY)
-        Box(
-            modifier = Modifier
-                .align(if (ringOn && style != 0) Alignment.TopCenter else Alignment.Center)
-                .fillMaxSize(fraction)
-                .graphicsLayer {
-                    translationX = if (swipingSideways) dragX * 0.5f else 0f
-                    translationY = if (swipingSideways) 0f else dragY * 0.5f
-                    alpha = 1f - (travel / size.width).coerceIn(0f, 1f) * 0.6f
-                    scaleX = pauseScale
-                    scaleY = pauseScale
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (vinyl) {
-                VinylDisc(cover = cover, angle = vinylAngle)
-            } else {
+        // The strip: previous, current and next cover, each offset by one pitch.
+        val slots = listOfNotNull(
+            previous?.let { it to -1 },
+            current to 0,
+            next?.let { it to 1 },
+        )
+        for ((entry, slot) in slots) {
+            key(entry.trackId) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(corner))
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                        .align(if (ringOn && style != 0) Alignment.TopCenter else Alignment.Center)
+                        .fillMaxSize(fraction)
+                        .graphicsLayer {
+                            val x = dragX + slot * pitch
+                            val away = (abs(x) / pitch).coerceIn(0f, 1f)
+                            translationX = x
+                            if (slot == 0) {
+                                val fall = (dragY / size.height).coerceIn(0f, 1f)
+                                translationY = dragY * 0.6f
+                                val s = pauseScale * (1f - 0.12f * away) * (1f - 0.25f * fall)
+                                scaleX = s
+                                scaleY = s
+                                alpha = (1f - 0.55f * away) * (1f - 0.7f * fall)
+                            } else {
+                                val s = 0.82f + 0.18f * (1f - away)
+                                scaleX = s
+                                scaleY = s
+                                alpha = 1f - 0.8f * away
+                            }
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Crossfade(targetState = cover, animationSpec = tween(350), label = "cover") { art ->
-                        if (art != null) {
-                            Image(
-                                bitmap = art.asImageBitmap(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        } else {
-                            Icon(
-                                Icons.Rounded.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(96.dp),
-                            )
-                        }
-                    }
+                    CoverCard(
+                        bitmap = covers[entry.trackId],
+                        vinyl = vinyl,
+                        corner = corner,
+                        angle = if (slot == 0) vinylAngle else restingAngle,
+                    )
                 }
             }
         }
@@ -482,6 +589,40 @@ private fun CoverStage(
                     if (hint < 0) "−10" else "+10",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    }
+}
+
+/** One cover of the strip: a rounded picture, or a record with the cover as its label. */
+@Composable
+private fun CoverCard(bitmap: Bitmap?, vinyl: Boolean, corner: Int, angle: androidx.compose.runtime.State<Float>) {
+    if (vinyl) {
+        VinylDisc(cover = bitmap, angle = angle)
+        return
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(corner))
+            .background(MaterialTheme.colorScheme.secondaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Crossfade(targetState = bitmap, animationSpec = tween(250), label = "cover") { art ->
+            if (art != null) {
+                Image(
+                    bitmap = art.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(96.dp),
                 )
             }
         }
@@ -637,21 +778,7 @@ private fun Controls(vm: MainViewModel, isPlaying: Boolean, shuffle: Boolean, re
         IconButton(onClick = { vm.player.previous() }, modifier = Modifier.size(56.dp)) {
             Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.previous), Modifier.size(36.dp))
         }
-        FilledIconButton(
-            onClick = { vm.player.togglePlay() },
-            modifier = Modifier.size(80.dp),
-            shape = RoundedCornerShape(if (isPlaying) 28.dp else 40.dp),
-            colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Icon(
-                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                modifier = Modifier.size(40.dp),
-            )
-        }
+        PlayPauseButton(isPlaying = isPlaying, onClick = { vm.player.togglePlay() })
         IconButton(onClick = { vm.player.next() }, modifier = Modifier.size(56.dp)) {
             Icon(Icons.Rounded.SkipNext, stringResource(R.string.next), Modifier.size(36.dp))
         }
@@ -869,4 +996,51 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWave(
     val edge = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round)
     drawPath(top, brush, alpha = alpha, style = edge)
     drawPath(bottom, brush, alpha = alpha, style = edge)
+}
+
+/**
+ * The big play/pause button. One value runs from 0 (paused) to 1 (playing) on a spring, and the
+ * shape, the two icons and their rotation all follow it, so one icon turns into the other
+ * instead of being swapped in a single frame.
+ */
+@Composable
+fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val progress by animateFloatAsState(
+        targetValue = if (isPlaying) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessMediumLow),
+        label = "playPause",
+    )
+    val p = progress.coerceIn(0f, 1f)
+    FilledIconButton(
+        onClick = onClick,
+        modifier = modifier.size(80.dp),
+        shape = RoundedCornerShape((40f - 12f * progress).coerceAtLeast(10f).dp),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Box(Modifier.size(40.dp)) {
+            Icon(
+                Icons.Rounded.PlayArrow,
+                contentDescription = stringResource(R.string.play),
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = 1f - p
+                    rotationZ = -90f * progress
+                    val s = 1f - 0.5f * p
+                    scaleX = s; scaleY = s
+                },
+            )
+            Icon(
+                Icons.Rounded.Pause,
+                contentDescription = stringResource(R.string.pause),
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    alpha = p
+                    rotationZ = 90f * (1f - progress)
+                    val s = 0.5f + 0.5f * p
+                    scaleX = s; scaleY = s
+                },
+            )
+        }
+    }
 }

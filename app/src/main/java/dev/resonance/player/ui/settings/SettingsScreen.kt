@@ -19,6 +19,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Colorize
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import dev.resonance.player.data.Locales
 import androidx.compose.material3.ExperimentalMaterial3Api
 import dev.resonance.player.ui.player.VisualizerStyleChips
 import androidx.compose.material3.FilterChip
@@ -57,6 +63,10 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
     val colorSource by settings.colorSource.collectAsState()
     val accent by settings.accent.collectAsState()
     val albumColors by settings.albumColors.collectAsState()
+    val gradient by settings.playerGradient.collectAsState()
+    val language by settings.language.collectAsState()
+    var pickerOpen by remember { mutableStateOf(false) }
+    val activity = LocalContext.current as? android.app.Activity
     val vinyl by settings.vinylMode.collectAsState()
     val backgroundVersion by vm.files.backgroundVersion.collectAsState()
     val backgroundDim by settings.backgroundDim.collectAsState()
@@ -65,6 +75,18 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
     val pickBackground = rememberImagePicker { uri, done -> vm.setBackground(uri, done) }
 
     val wallpaperAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+    if (pickerOpen) {
+        ColorPickerDialog(
+            initial = accent,
+            onDismiss = { pickerOpen = false },
+            onPick = {
+                settings.setAccent(it)
+                settings.setColorSource(ColorSource.ACCENT)
+                pickerOpen = false
+            },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -125,6 +147,29 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    val isCustom = accent !in ACCENT_SEEDS
+                    // The last swatch opens the picker; it shows the custom color once one is chosen.
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (isCustom) Color(accent) else MaterialTheme.colorScheme.surfaceContainerHighest)
+                            .then(
+                                if (isCustom) {
+                                    Modifier.border(BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface), CircleShape)
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .clickable { pickerOpen = true },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (isCustom) Icons.Rounded.Check else Icons.Rounded.Colorize,
+                            contentDescription = stringResource(R.string.color_picker_title),
+                            tint = if (isCustom) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     ACCENT_SEEDS.forEach { seed ->
                         val selected = seed == accent
                         Box(
@@ -148,6 +193,12 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                 }
             }
 
+            SwitchRow(
+                title = stringResource(R.string.settings_player_gradient),
+                subtitle = stringResource(R.string.settings_player_gradient_hint),
+                checked = gradient,
+                onChange = settings::setPlayerGradient,
+            )
             SwitchRow(
                 title = stringResource(R.string.settings_album_colors),
                 subtitle = stringResource(R.string.settings_album_colors_hint),
@@ -173,6 +224,26 @@ fun SettingsScreen(vm: MainViewModel, onBack: () -> Unit, onOpenAbout: () -> Uni
                 checked = vinyl,
                 onChange = settings::setVinylMode,
             )
+
+            SectionHeader(stringResource(R.string.settings_language))
+            FlowRow(
+                Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                (listOf("" to stringResource(R.string.language_system)) + Locales.supported).forEach { (tag, name) ->
+                    FilterChip(
+                        selected = language == tag,
+                        onClick = {
+                            if (language != tag) {
+                                settings.setLanguage(tag)
+                                // Resources are bound when the activity starts, so restart it to apply the language.
+                                activity?.recreate()
+                            }
+                        },
+                        label = { Text(name) },
+                    )
+                }
+            }
 
             SectionHeader(stringResource(R.string.settings_playback))
             Label(stringResource(R.string.settings_crossfade))
