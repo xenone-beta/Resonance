@@ -4,12 +4,6 @@ A local-files music player for Android, designed with Material 3 / Material You.
 No accounts, no ads, no internet permission: it plays the music that is already on your phone.
 
 
-## Preview (1.2.5)
-
-![Resonance 1.2.5: gradient player with covers as a strip, own color picker, language settings](docs/preview-1.2.5.png)
-
-*These are design previews of the 1.2.5 screens, not device screenshots.*
-
 ## Features
 
 - **Library**: songs, albums and artists from the device (MediaStore), updated automatically
